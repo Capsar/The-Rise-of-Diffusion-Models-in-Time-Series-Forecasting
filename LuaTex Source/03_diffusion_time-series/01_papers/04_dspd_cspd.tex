@@ -1,0 +1,52 @@
+\subsection{DSPD \& CSPD: Modeling Temporal Data as Continuous Functions with Process Diffusion (2022) \cite{bilos_modeling_2022}} \label{sec:dspd_cspd}
+The implementation is based on that of TimeGrad \cite{rasul_autoregressive_2021} with two key contributions.
+The main contribution and novelty of this paper is that they model the time-series as continuous functions instead of discrete sequences. This allows the model to predict values at any time, even between the existing time-series data steps. The second contribution is a change in the architecture that allows the model to predict multiple values at the same time which scales better on modern hardware.
+
+Formally, they make the assumption that each observed time series comes from an underlying continuous function $x(\cdot)$ and thus are interested in modeling the distribution $p(x(\cdot))$. Because of this assumption, they have to add a time correlated noise function $\epsilon(\cdot)$ to $x(\cdot)$ instead of independent noise. As noise functions they propose a Gaussian process prior (GP) or a Ornstein-Uhlenback (OU) diffusion process. \textcite{bilos_modeling_2022} define both the GP and OU processes with a multivariate normal distribution $\mathcal{N} (0, \Sigma)$. Both $\epsilon(\cdot)$ and $\Sigma$ are calculated using the timestamps of the observations.
+
+They continue by proposing their implementations Discrete Stochastic Process Diffusion (DSPD) and Continuous Stochastic Process Diffusion (CSPD), based on DDPM and SDE respectively. The fact that the implementations model continuous functions has nothing to do with whether the diffusion process is done discretely or continuously. In both the DSPD and CSPD, they use a forecasting model that outputs noise $\epsilon$ as in \autoref{eq:cond_ddpm_noise_prediction}. For CSPD, they refactor the noise predictions to the score function value.
+
+For the case of forecasting, an RNN is used to obtain the historical condition $\mathbf{z}$. This condition does not change during the forecasting as poposed to TimeGrad and ScoreGrad. Furthermore, because the architecture uses 2D instead of 1D convolutional layers, the model is capable of forecasting all of the values at once.
+
+\textbf{Discrete Stochastic Process Diffusion (DSPD):}
+In the reverse process the marginal distributions, as in \autoref{eq:cond_reverse_process} are adjust for the assumption of modeling continuous functions as such:
+\begin{equation}
+ \label{eq:dspd_cspd_time_reverse_process}
+     p_\theta(X_{tar}^{k-1} \mid X_{tar}^k, X_{obs}) = \mathcal{N} (x^{k-1}; \mu_\theta(x^k, t, k | \mathbf{z}), \sigma^2_k \Sigma)
+\end{equation}
+where $t$ are the timestamps of the to be forecasted values and $\mathbf{z}$ the encoded historical data. Furthermore, the variance is adjusted to the time correlated noise with $\Sigma$ instead of $\mathbf{I}$ as in \autoref{eq:diff_reverse_process}.
+
+\textbf{Continuous Stochastic Process Diffusion (CSPD):}
+Given the factorized covariance matrix $\Sigma = \mathbf{L}\mathbf{L}^T$ the variance preserving SDE of \autoref{eq:sde_vp} is modified to:
+\begin{equation}
+    dX_{tar}^k = -\frac{1}{2}\beta(k) X dk + \sqrt{\beta(k)}\mathbf{L}dW
+\end{equation}
+
+For both DPSD and CSPD, the authors employ the reparameterization to predict noise which also results in the following objective function:
+\begin{equation}
+    \mathcal{L}_{\epsilon_\theta} = \mathbb{E}_{k, X_{tar}^0, \epsilon} \left[|| \epsilon - \epsilon_\theta(X_{tar}^k,  t, k, | \mathbf{z})||^2 \right]
+\end{equation}
+
+Unfortunately, the paper does not compare with the same CRPS$_{\text{sum}}$ metric as previous papers, but it does state that the order compared to TimeGrad does not change. The compare on NRMSE and the energy score \cite{gneiting_strictly_2007}.
+
+
+\begin{table}[ht]
+    \centering
+    \begin{tabular}{cccccccccc}
+        \toprule
+        \multirow{2}{*}{Dataset} & \multirow{2}{*}{H} & \multirow{2}{*}{F} & \multicolumn{2}{c}{NRMSE} & \multicolumn{2}{c}{Energy Score} \\
+        \cmidrule(lr){4-5} \cmidrule(lr){6-7}
+         & & & TimeGrad & DSPD-GP & TimeGrad & DSPD-GP \\
+        \midrule
+        Electricity & 24  & 24  & $0.064 \pm 0.007$ & $\mathbf{0.045 \pm 0.002}$ & $8425 \pm 613$ & $\mathbf{7079 \pm 164}$ \\
+        \midrule
+        Exchange & 30  & 30  & $0.013 \pm 0.003$ & $\mathbf{0.012 \pm 0.001}$ & $0.057 \pm 0.002$ & $\mathbf{0.031 \pm 0.002}$ \\
+        \midrule
+        Solar & 24  & 24  & $0.799 \pm 0.096$ & $\mathbf{0.757 \pm 0.026}$ & $\mathbf{150 \pm 17}$ & $166 \pm 12$ \\
+        \bottomrule
+    \end{tabular}
+    \caption{DSPD-GP Multivariate Forecasting results \cite{bilos_modeling_2022}}
+    \label{tab:dspd-gp-results}
+\end{table}
+
+The process has the same limitation as TimeGrad[\ref{sec:timegrad}] and ScoreGrad [\ref{sec:scoregrad}], namely that it uses an RNN to represent the historical data. The paper states to use the same architecture, with Transformer, as CSDI [\ref{sec:csdi}] for imputation and only changes the noise source to that of a Gaussian process. The paper only compares to TimeGrad for forecasting capabilities, which is rather disappointing because it later on also compares the imputation capabilities with CSDI. CSDI already performs better at forecasting than TimeGrad, making me wonder whether this was done deliberately. Furthermore, the code is not available for reproducibility. The paper could make a much stronger case for the superiority of time correlated noise if they had evaluated it against more time-series forecasting models and used Transformers for encoding the historical data.

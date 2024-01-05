@@ -1,0 +1,75 @@
+\subsection{D$^3$ VAE: Generative Time Series Forecasting with Diffusion, Denoise, and Disentanglement (2022) \cite{li_generative_2022}} \label{sec:d3vae}
+This paper, even though it mentions the diffusion and denoising process of \textcite{ho_denoising_2020}, it does so differently from what has been described so far in this survey. Furthermore, the paper focuses on the interpretability of the forecasts and tries to decompose the aleatoric and epistemic uncertainty of the data and model. 
+The model contains three key components. Firstly a coupled diffusion process, secondly a bidirectional variational auto-encoder(BVAE) \cite{vahdat_nvae_2020} for disentanglement, and lastly extra denoising through denoising score matching (DSM).
+These three components also motivate the name with diffusion denoise and disentanglement, hence D$^3$ VAE. 
+
+\textbf{Coupled Diffusion Process:}
+The name, coupled diffusion process, comes from the fact that it adds noise to both the historical and future windows of a sample. This helps because the diffused samples can augment the dataset giving more support to forecasting with short and noisy time series. Furthermore, the paper proves that by decomposing the $X_{tar}^k$ from \autoref{eq:ddpm_get_xk} and $X_{obs}^k$, into an ideal part and noisy part, it can reduce the difference between diffusion noise and generation noise. The decomposition is formalized as:
+\begin{align}
+    X_{tar}^k = \sqrt{\alpha_k^\prime}X_{tar}^0 + \sqrt{1 - \alpha_k^\prime}\epsilon_{X_{tar}} &= \underbrace{\sqrt{\alpha_k^\prime}\bar{X}_{tar}}_{\text{ideal part}} + \underbrace{\sqrt{\alpha_k^\prime}\delta_{X_{tar}} + \sqrt{1 - \alpha_k^\prime}\epsilon_{X_{tar}}}_{\text{noisy part}} \\
+    X_{obs}^k = \sqrt{\alpha_k}X_{obs}^0 + \sqrt{1 - \alpha_k}\epsilon_{X_{obs}} &= \underbrace{\sqrt{\alpha_k}\bar{X}_{obs}}_{\text{ideal part}} + \underbrace{\sqrt{\alpha_k}\delta_{X_{obs}} + \sqrt{1 - \alpha_k}\epsilon_{X_{obs}}}_{\text{noisy part}}
+\end{align}
+where the diffusion of the targets uses a scaled version of $\alpha_k$, namely given a scale parameter $\omega \in (0, 1)$ such that $\beta_k^\prime = \omega \beta_k$ and subsequently $\alpha_k^\prime = \prod_{i=1}^k (1 - \beta_i^\prime)$. The noisy part is split into the diffusion noise $\epsilon_X$ and data noise $\delta_X$. In other words, this decomposition reduces the uncertainty of the generated forecasts as proven by \textcite{li_generative_2022}.
+
+\textbf{Bidirectional Variational Auto-Encoder:}
+The second component is the more efficient generative model, i.e. BVAE \cite{vahdat_nvae_2020}, that replaces the reverse process. Besides replacing the reverse process the BVAE is also used to facilitate model interpretability through disentanglement. In contrast to the standard reverse process that diffuses and denoises only the targets, the BVAE processes the diffused observations $X_{obs}^k$. Formally, the BVAE encodes the $X_{obs}^k$ into a latent variable $Z$ as $p_\phi(Z, X_{obs}^k)$. Given this latent variable the decoder generates the prediction $\hat{X}_{tar}^k$ through $p_\theta(\hat{X}_{tar}^k, Z)$. The generated prediction still contains noise, which is subsequently removed by the Scaled DSM. The Latent variable $Z$ is used for disentanglement, which is achieved by minimizing the Total Correlation \cite{watanabe_information_1960, kim_disentangling_2018}. This helps with interpretability by identifying the independent factors of the data \cite{li_learning_2021, lake_building_2017, higgins_beta-vae_2016}.
+
+\textbf{Scaled Denoising Score Matching:}
+The forecasts produced by the BVAE tend to move towards the diffused target series. To further clean the generated target series $\hat{X}_{tar}^k$, the authors employ the DSM to accelerate the de-uncertainty process without sacrificing the model flexibility. This denoising is done via a single-step gradient jump \cite{saremi_neural_2019}.
+\begin{equation}
+    \hat{X}_{tar}^0 = \hat{X}_{tar}^k - \sigma_0^2 \nabla_{\hat{X}_{tar}^k} E(\hat{X}_{tar}^k, \zeta)
+\end{equation}
+where $\sigma_0$ is a hyperparameter and $E(\hat{X}_{tar}^k, \zeta)$ is an energy function. The denoising step is taken in the direction of the greatest increase of this energy function, hence $\nabla_{\hat{X}_{tar}^k}$. 
+
+All of these components are trained using their own loss functions, which results in the total loss function:
+\begin{equation}
+    \mathcal{L} = \underbrace{\psi \cdot \mathcal{D}_{KL} \left(q(X_{tar}^k || p_\theta(X_{tar}^k) \right)}_{BVAE} + \underbrace{\lambda \cdot \mathcal{L}(\zeta, k)}_{DSM} + \underbrace{\gamma \cdot \mathcal{L}_{TC}}_{Disent.} + \underbrace{\mathcal{L}_{MSE}(\hat{X}_{tar}^k, X_{tar}^k)}_{BVAE}
+\end{equation}
+
+D$^3$VAE use the datasets: Traffic \cite{cuturi_pems-sf_2011}\lfootnote{d3vae_traffic}{LSTNet \cite{lai_modeling_2018}: }{https://github.com/laiguokun/multivariate-time-series-data/tree/master}, Electricity \cite{trindade_electricityloaddiagrams20112014_2015}, Weather \cite{max-planck-institut_fuer_biogeochemie_weather_2008}, ETTm1\cite{zhou_informer_2021}\lfootnote{ett}{Informer \cite{zhou_informer_2021}: }{https://github.com/zhouhaoyi/ETDataset}, ETTh1\cite{zhou_informer_2021}\footref{fn:ett}, Wind\cite{li_generative_2022}\lfootnote{wind}{D$^3$VAE \cite{li_generative_2022}: }{https://github.com/PaddlePaddle/PaddleSpatial/tree/main/paddlespatial/datasets}. It is not explained how the datasets of Electricity  \cite{trindade_electricityloaddiagrams20112014_2015} and Weather \cite{max-planck-institut_fuer_biogeochemie_weather_2008} are gathered or pre-processed, only the source websites are mentioned. It is important to note that the Traffic and Electricity datasets used in D$^3$VAE do not share characteristics with those used from GluonTS\footref{fn:gluon-ts} in TimeGrad, ScoreGrad or CSDI even though they are from the same source. Furthermore and because of the motivation to be able to train on short time-series datasets via augmentation, the authors only take a small percentage of the datasets previously mentioned. The results are presented in \autoref{tab:d3vae-results}.
+
+\begin{table}[ht]
+    \centering
+    \begin{tabular}{cccccccccc}
+        \toprule
+        \multirow{2}{*}{Dataset} & \multirow{2}{*}{H} & \multirow{2}{*}{F} & \multicolumn{2}{c}{MSE} & \multicolumn{2}{c}{CRPS} \\
+        \cmidrule(lr){4-5} \cmidrule(lr){6-7}
+         & & & \textbf{D3VAE} & TimeGrad & \textbf{D3VAE} & TimeGrad \\
+        \midrule
+        \multirow{4}{*}{Traffic ($5\%$)} & 8  & 8  & $0.081 \pm 0.003$ & $3.695 \pm 0.246$ & $0.207 \pm 0.003$ & $1.410 \pm 0.027$ \\
+         & 16 & 16 & $0.081 \pm 0.009$ & $3.495 \pm 0.362$ & $0.200 \pm 0.014$ & $1.329 \pm 0.057$ \\
+         & 32 & 32 & $0.091 \pm 0.007$ & $5.195 \pm 2.26$  & $0.216 \pm 0.012$ & $1.565 \pm 0.329$ \\
+         & 64 & 64 & $0.125 \pm 0.005$ & $3.692 \pm 1.54$  & $0.244 \pm 0.006$ & $1.412 \pm 0.257$ \\
+        \midrule
+        \multirow{3}{*}{Electricity ($3\%$)} & 8  & 8  & $0.251 \pm 0.015$ & $2.703 \pm 0.087$ & $0.398 \pm 0.011$ & $1.208 \pm 0.024$ \\
+         & 16 & 16 & $0.308 \pm 0.030$ & $2.770 \pm 0.237$ & $0.437 \pm 0.020$ & $1.240 \pm 0.048$ \\
+         & 32 & 32 & $0.410 \pm 0.075$ & $2.640 \pm 0.138$ & $0.534 \pm 0.058$ & $1.234 \pm 0.027$ \\
+        \midrule
+        \multirow{4}{*}{Weather ($2\%$)} & 8  & 8  & $0.169 \pm 0.022$ & $1.110 \pm 0.083$ & $0.357 \pm 0.024$ & $0.733 \pm 0.016$ \\
+         & 16 & 16 & $0.187 \pm 0.047$ & $1.065 \pm 0.145$ & $0.361 \pm 0.046$ & $0.724 \pm 0.021$ \\
+         & 32 & 32 & $0.203 \pm 0.008$ & $1.178 \pm 0.069$ & $0.383 \pm 0.007$ & $0.696 \pm 0.011$ \\
+         & 64 & 64 & $0.191 \pm 0.022$ & $1.063 \pm 0.061$ & $0.358 \pm 0.044$ & $0.696 \pm 0.011$ \\
+        \midrule
+        \multirow{3}{*}{ETTm1 ($1\%$)} & 8  & 8  & $0.527 \pm 0.073$ & $0.984 \pm 0.074$ & $0.557 \pm 0.048$ & $0.908 \pm 0.038$ \\
+         & 16 & 16 & $0.968 \pm 0.104$ & $2.032 \pm 0.234$ & $0.821 \pm 0.072$ & $0.919 \pm 0.031$ \\
+         & 32 & 32 & $0.707 \pm 0.061$ & $1.251 \pm 0.133$ & $0.697 \pm 0.040$ & $0.822 \pm 0.032$ \\
+        \midrule
+        \multirow{4}{*}{ETTh1 ($5\%$)} & 8  & 8  & $0.292 \pm 0.036$ & $4.259 \pm 1.13$  & $0.424 \pm 0.033$ & $1.092 \pm 0.028$ \\
+         & 16 & 16 & $0.374 \pm 0.061$ & $1.332 \pm 0.125$ & $0.488 \pm 0.039$ & $0.879 \pm 0.037$ \\
+         & 32 & 32 & $0.334 \pm 0.008$ & $1.514 \pm 0.042$ & $0.461 \pm 0.004$ & $0.925 \pm 0.016$ \\
+         & 64 & 64 & $0.349 \pm 0.039$ & $1.150 \pm 0.118$ & $0.473 \pm 0.024$ & $0.835 \pm 0.045$ \\
+        \midrule
+        \multirow{4}{*}{Wind ($2\%$)} & 8  & 8  & $0.681 \pm 0.075$ & $12.67 \pm 1.75$  & $0.596 \pm 0.052$ & $1.440 \pm 0.059$ \\
+         & 16 & 16 & $1.033 \pm 0.062$ & $12.86 \pm 2.60$  & $0.757 \pm 0.053$ & $1.240 \pm 0.070$ \\
+         & 32 & 32 & $1.224 \pm 0.060$ & $13.10 \pm 0.955$ & $0.869 \pm 0.074$ & $1.518 \pm 0.020$ \\
+         & 64 & 64 & $0.902 \pm 0.024$ & $3.857 \pm 0.597$ & $0.761 \pm 0.021$ & $1.110 \pm 0.143$ \\
+        \bottomrule
+    \end{tabular}
+    \caption{D$^3$VAE Multivariate forecasting results \cite{li_generative_2022}}
+    \label{tab:d3vae-results}
+\end{table}
+
+Even though not directly comparable, the results of TimeGrad in \autoref{tab:d3vae-results} are way worse than what is presented in \autoref{tab:timegrad-results}. My initial thought was that this was due to the fact that D$^3$VAE only takes a small percentage of the dataset to show that its augmentation improves the results. However, for the dataset Electricity they also experimented with using the full dataset and the performance of TimeGrad does not seem to resemble the same performance as presented by \textcite{rasul_autoregressive_2021}. Moreover, in the D$^3$VAE paper are plots of the TimeGrad performance and it is not on par with what is shown by \textcite{rasul_autoregressive_2021} even though they both use the same dataset source.
+Luckily, the authors of TimeDiff \ref{sec:timediff} have used D$^3$VAE in their comparison and the results show for multivariate time-series forecasting with long forecasting windows that the model does perform better than TimeGrad and CSDI \cite{shen_non-autoregressive_2023}.
+The paper claims the BVAE replaces the reverse process while the inputs to the BVAE is the observation section of the time-series instead of the future section. This makes the diffusion process untypical more difficult \cite{shen_non-autoregressive_2023}. Furthermore, the authors claim that the outputs of the BVAE converge to the diffused outputs of the coupled diffusion process. The outputs of the coupled diffusion process are maximum noise, indicating that the BVAE tends to move towards that noisy output. Moreover, the final denoising step is taken by the DSM creating the cleaned-up prediction.
+The model has many hyperparameters that need to be tuned, this can be a significant limitation in finding its optimal performance.

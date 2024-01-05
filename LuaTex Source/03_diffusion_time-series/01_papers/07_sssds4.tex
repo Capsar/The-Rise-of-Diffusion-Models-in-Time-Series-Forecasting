@@ -1,0 +1,48 @@
+\subsection{SSSD$^{\text{S4}}$: Diffusion-based Time Series Imputation and Forecasting with Structured State Space Models (2023) \cite{alcaraz_diffusion-based_2023}} \label{sec:sssds4}
+The model of SSSD$^{\text{S4}}$, is heavily inspired by DiffWave \cite{kong_diffwave_2020} and CSDI \cite{tashiro_csdi_2021}, with three main differences. The first is the fact that SSSD$^{\text{S4}}$ uses S4 models \cite{gu_efficiently_2022} instead of dilated convolutions or transformer layers \cite{vaswani_attention_2017}. The S4 models are computationally more efficient and particularly suited to handling long-term dependencies in time-series data \cite{gu_efficiently_2022, goel_its_2022}. 
+Secondly, SSSD$^{\text{S4}}$ has reduced the internal representation of shape (batch $dim$, diffusion $dim$, input channel $dim$,  time $dim$) in CSDI to shape (batch $dim$, diffusion $dim$, time $dim$). This maps the input channels into the diffusion dimension and thus the model only performs diffusion along the time dimension instead of both the time and input channel dimensions. This corresponds to the common approach when applying diffusion models to image or sound data \cite{alcaraz_diffusion-based_2023}. 
+
+At last, SSSD$^{\text{S4}}$ only applies the diffusion process to the segments that need to be imputed, as this yields better results than applying the diffusion process to all segments. This change in applying the noise during the diffusion process turns out to be better than the methods in image inpainting \cite{lugmayr_repaint_2022}. This is different from CSDI, which applies noise to the imputation targets and missing values. The missing values in CSDI are padded with zeros to fix the shape of the inputs. Whereas in SSSD$^{\text{S4}}$ no noise is generated for the missing values.
+
+The input data is represented differently from CSDI, leaving out the timestamp. This results in $\{x, m\}$ pairs where $x$ is the value vector and $m$ is the binary mask value.
+
+The reverse process and loss function are formulated the same as in \autoref{eq:csdi_reverse_process} and \autoref{eq:csdi_loss_function}. The authors investigate both types of conditioning, as extra input during training and training unconditionally and including the conditional information during inference. 
+
+\textbf{Structured State Space Sequence Model (S4)}:
+The S4 architecture is composed of State Space Models (SSM). The SSM \cite{gu_efficiently_2022} is based on a linear state space transition equation, connecting a 1D input sequence $u(t)$ to a 1D output sequence $y(t)$ via a N-dimensional hidden state $x(t)$. This can be formalized as
+\begin{equation}
+    x^\prime(t) = Ax(t) + Bu(t) \text{ and } y(t) = Cx(t) + Du(t),
+\end{equation}
+where $A$, $B$, $C$, $D$ area transition matrices. These SSMs can be evaluated efficiently on modern GPUs \cite{gu_efficiently_2022} and can capture long-term dependencies according to the HiPPO theory \cite{gu_hippo_2020, gu_how_2022}. By stacking several SSM blocks and additional layers the Structured State Space Sequence model (S4) was created and demonstrated good performance on sequence classification tasks. Structuring the S4 layers in a U-Net-inspired configuration gave rise to SaShiMi \cite{goel_its_2022}, which is a generative sequence generative model.
+
+Because the model is inspired by DiffWave and CSDI, the authors propose to compare 3 variations of models to better understand each of the individual components. Namely, SSSD$^{\text{S4}}$, SSSD$^{\text{SA}}$, CSDI$^{\text{S4}}$. SSSD$^{\text{S4}}$ is a variant of DiffWave but with S4 components. SSSD$^{\text{SA}}$ is a variant of DiffWave but with the SaShiMi instead of S4 components. Lastly, CSDI$^{\text{S4}}$ is a variant of CSDI but where the time direction transformer is replaced with an S4 layer.
+
+SSSD$^{\text{S4}}$ performs time-series forecasting on the PTB-XL \cite{wagner_ptb-xl_2020}, the Solar \cite{lai_modeling_2018} dataset from Gluon-TS\footref{fn:gluon-ts} and on the ETTm1\footref{fn:ett} dataset from \textcite{zhou_informer_2021}. All data gathering and pre-processing for $SSSD^{S4}$ is explained on their Github\lfootnote{sssds4_github}{$SSSD^{S4}$ \cite{alcaraz_diffusion-based_2023}: }{https://github.com/AI4HealthUOL/SSSD}.
+\begin{table}[ht]
+    \centering
+    \small
+    \begin{tabular}{cccccccccc}
+        \toprule
+        \multirow{2}{*}{Dataset} & \multirow{2}{*}{H} & \multirow{2}{*}{F} & \multicolumn{4}{c}{MAE} & \multicolumn{2}{c}{MSE} \\
+        \cmidrule(lr){4-7} \cmidrule(lr){8-9}
+         & & & CSDI & CSDI$^{\text{S4}}$ & SSSD$^{\text{SA}}$ & SSSD$^{\text{S4}}$ & CSDI & SSSD$^{\text{S4}}$ \\
+        \midrule
+        PTB-XL & 800 & 200 & 0.165$\pm$\num{9e-4} & 0.120$\pm$\num{2e-4} & \textbf{0.087}$\pm$\textbf{\num{8e-3}} & 0.090$\pm$\num{3e-3} & - & - \\
+        \midrule
+        Solar & 168 & 24 & - & - & - & - & 900$\pm$61 & \textbf{503}$\pm$\textbf{10.6} \\
+        \midrule
+        ETTm1 & 96 & 24 & 0.370 & - & - & \textbf{0.361} & 0.354 & \textbf{0.351} \\
+         & 48 & 48 & 0.546 & - & - & \textbf{0.479} & 0.750 & \textbf{0.612} \\
+         & 284 & 96 & 0.756 & - & - & \textbf{0.547} & 1.468 & \textbf{0.538} \\
+         & 288 & 288 & \textbf{0.530} & - & - & 0.648 & \textbf{0.608} & 0.797 \\
+         & 384 & 672 & 0.891 & - & - & \textbf{0.783} & 0.946 & \textbf{0.804} \\
+        \bottomrule
+    \end{tabular}
+    \caption{SSSD$^{\text{S4}}$ Multivariate Forecasting Results \cite{alcaraz_diffusion-based_2023}}
+    \label{tab:sssds4-results}
+\end{table}
+
+On the PTB-XL dataset, it can be seen that SSSD$^{\text{SA}}$ and SSSD$^{\text{S4}}$ perform similarly well for forecasting. However, for imputation on PTB-XL the S4 variant outperforms SA all the time. Furthermore, in the visual plots shown by \cite{alcaraz_diffusion-based_2023} the S4 variant is much more certain in its predictions. The comparison of CSDI [\ref{sec:csdi}] and SSSD$^{\text{S4}}$ on Solar indicates a great improvement, just as on ETTm1.
+There are however also limitations to the SSSD$^{\text{S4}}$ method. As hypothesized in the paper, because of the dimension reduction, it becomes increasingly difficult for the SSSD$^{\text{S4}}$ model to reconstruct the original input channels from the internal diffusion channels in situations with a large number of input channels. \textcite{alcaraz_diffusion-based_2023} see the central strength of SSSD$^{\text{S4}}$ to be its ability to capture long-term dependencies along the time direction. As a result, CSDI performs better in situations with many input channels or situations where the relations between input channels are more important than the temporal consistency \cite{alcaraz_diffusion-based_2023}.
+The conditioning strategy is, like CSDI, taken from models for image or text data, and not specifically for time series. It has been empirically shown that its long-range prediction performance is inferior to other time-series prediction models \cite{shen_non-autoregressive_2023}. Furthermore, The performance deteriorated due to the boundary disharmony by the semi-supervised learning strategy \cite{shen_non-autoregressive_2023}.
+The research in SSMs is continuing at a high pace, surpassing Transformers in foundation models such as \cite{gu_mamba_2023}.

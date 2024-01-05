@@ -1,0 +1,27 @@
+\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth]{00_images/diffusion.png}
+    \caption{Denoising Diffusion Process}
+    \label{fig:denoising_diffusion_process}
+\end{figure}
+
+\section{Introduction}
+The advent of generative artificial intelligence (AI) has been transformative across various domains, ranging from education \cite{baidoo-anu_education_2023, qadir_engineering_2023, lim_generative_2023} to workplaces \cite{noy_experimental_2023, brynjolfsson_generative_2023} and daily activities \cite{dwivedi_opinion_2023}. Central to this transformation is deep learning, a key pillar enabling AI to analyze and synthesize complex data patterns. Initially, generative AI is defined by its ability to create new, original data samples that reflect the statistical characteristics of a specified dataset, represented mathematically as: given a sample $x$ from distribution $q(x)$, the generative model produces outputs $\hat{x}$ that appear to be drawn from $q(x)$ \cite{luo_understanding_2022}.
+
+Following this introductory note on generative AI, the focus shifts to time-series forecasting, an area of critical importance across various industries. Time-series data, characterized by their temporal dependencies and multifaceted interactions, present unique challenges and opportunities for forecasting future events based on historical data. This is particularly significant in fields such as healthcare prediction \cite{penfold_use_2013, bui_time_2018, che_recurrent_2018, kaushik_ai_2020, chimmula_time_2020, zeroual_deep_2020}, energy management \cite{deb_review_2017, chou_forecasting_2018, wang_diffload_2023}, and traffic control \cite{lippi_short-term_2013, pavlyuk_short-term_2017}.
+
+In the landscape of time-series forecasting, the solution space has evolved considerably over time. Initial advancements were marked by the introduction of Long Short-Term Memory (LSTM) variants, notably, the Seq2Seq Autoencoder-LSTM \cite{sutskever_sequence_2014}. However, a significant paradigm shift occurred in 2017 with the introduction of the Transformer structure, which incorporated attention mechanisms \cite{vaswani_attention_2017}. This innovation addressed the critical limitation of LSTMs, which was the loss of previous information over extended sequences \cite{murray_state---art_2023}. Subsequent developments in Transformer-based models, \cite{nguyen_temporal_2021, zhou_informer_2021, wu_autoformer_2022, zhou_fedformer_2022, zhang_crossformer_2022, nie_time_2023}, have furthered the field. 
+
+In the field of generative modeling, the introduction of modeling structures such as variational autoencoders (VAEs), normalizing flows (NFs), and generative adversarial networks (GANs) have marked significant advancements \cite{foster_generative_2022, bond-taylor_deep_2022}. Yet, the emergence of diffusion models signals a revolutionary period, promising superior-quality outputs that are pushing the state-of-the-art \cite{dhariwal_diffusion_2021, yang_diffusion_2023, croitoru_diffusion_2023}. A diffusion model can be characterized by the fact that they simulate, as the name implies, a diffusion process transforming data into white noise and then reversing it back into data as shown in \autoref{fig:denoising_diffusion_process}.
+These models, capable of approximating the original data distribution, have shown exceeding results in various domains, including image \cite{ho_cascaded_2021, dhariwal_diffusion_2021, rombach_high-resolution_2022, austin_structured_2021}, text \cite{gong_diffuseq_2023, li_diffusion-lm_2022, yu_latent_2023}, speech \cite{kong_diffwave_2020, yang_diffsound_2023} and video synthesis \cite{yang_diffusion_2022, harvey_flexible_2022, ho_imagen_2022, ho_video_2022}.
+
+In this paper, we narrow our focus to the application of diffusion models in time-series forecasting. These models, distinguished by their profound ability to comprehend intricate data dynamics, are revolutionizing this field \cite{lin_diffusion_2023, koo_comprehensive_2023}. First time-series forecasting is further formalized together with how to evaluate the models in sub-section \ref{sec:time-series}. Afterwards, the intrinsic workings of the diffusion model and how to condition it is explained in section \ref{sec:preliminary}. Then the diffusion-based time-series forecasting papers are discussed in section \ref{sec:diffusion_time-series}. Finally, a comprehensive discussion and future works is given in sections \ref{sec:discussion} and \ref{sec:future_works} respectively.
+
+The main contributions of this paper are:
+\begin{itemize}
+    \item In-depth preliminary section about diffusion models and the methods of conditioning that are used for time-series modeling.
+    \item A chronologically ordered overview of the diffusion models capable of time-series forecasting, going in-depth on the implementation in relation to the preliminary, specify the results on which datasets, and a discussion about the work in relation to other diffusion models. 
+    \item The work serves as in depth overview for researchers seeking to acquaint themselves with the methods that make up the current state-of-the-art diffusion models for time-series forecasting. 
+\end{itemize}
+
+\input{01_time-series/00_time-series}

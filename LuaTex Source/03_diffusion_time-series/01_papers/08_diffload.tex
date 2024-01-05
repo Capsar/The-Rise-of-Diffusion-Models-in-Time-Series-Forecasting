@@ -1,0 +1,54 @@
+\subsection{DiffLoad: Uncertainty Quantification in Load Forecasting with Diffusion Model (2023) \cite{wang_diffload_2023}} \label{sec:diffload}
+The model mentions TimeGrad \cite{rasul_autoregressive_2021} but in essence is a sequence-to-sequence model \cite{sutskever_sequence_2014} that performs the diffusion denoising process on the hidden state in between the encoder and decoder. It is specifically designed for forecasting tasks of electrical loads and to tackle situations where the temporal data has a distribution shift and contains outliers. The authors make two main contributions, the first one being a new uncertainty quantification method for neural network forecasting utilizing a diffusion-based encoder to concentrate uncertainty in the latent variable before inputting it into the decoder, providing better insights into the epistemic uncertainty. Furthermore, they propose an emission head based on the additive Cauchy distribution to capture the aleatoric uncertainty.
+
+\textbf{Hidden-state Diffusion:}
+The historical data is encoded with the use of a GRU, resulting in a hidden state $h_0$. This hidden state is then put through the diffusion and denoising process of an unconditional DDPM [\ref{sec:unconditional_ddpm}] with $p(h^K) \sim \mathcal{N}(0, \mathbf{I})$ as: 
+\begin{equation}
+ \label{eq:diffload_reverse_process}
+     p_\theta(h^{0:K}) = p(h^K)\prod_{k=1}^{K} p_\theta(h^{k-1} \mid h^k) \text{ where } p_\theta(h^{k-1} | h^k) = \mathcal{N} (h^{k-1}; \mu_\theta(h^k, k), \sigma^2_k \mathbf{I})
+\end{equation}
+The theory continuous with \autoref{eq:diff_sigma_squared} where $\sigma_k^2 = \tilde{\beta}_k$ and $\mu_\theta(h^k, k)$ is reparameterized with the noise prediction model explained in \autoref{eq:ddpm_noise_prediction} with loss function $\mathcal{L}_{\epsilon_\theta}$. The idea behind this diffusion process is to be able to capture and quantify the epistemic uncertainty by generating multiple forecasts, from which an uncertainty can be determined. By estimating the distribution of the hidden state of encoded historical data, the randomness that is left in the estimated hidden state quantifies the model uncertainty. 
+
+\textbf{Cauchy distribution model head:}
+The new hidden state $\hat{h}_0$ is used as the starting hidden state for the decoder and it continuous to produce the forecast by outputting $\hat{\mu}_\phi$ and $\hat{\sigma}_\phi$ for the Cauchy distribution. The Cauchy distribution is used because it is more heavy-tailed compared to the traditional Gaussian distribution. This heavy-tail property makes the Cauchy distribution more robust to outliers and mutation \cite{huber_robust_2011, li_learning_2023}.
+The Cauchy distribution can be defined by a mean and scale parameter, similar to the Gaussian distribution and is formalized by the authors as:
+\begin{align}
+    \mu_{\phi(t+1)} &= \text{NN}_1(\hat{h}_{t+1}), \\
+    \sigma_{\phi(t+1)} &= \text{SoftPlus} \left[ \text{NN}_2(\hat{h}_{t+1}) \right]
+\end{align}
+Using these parameters, the conditional distribution of the error can be described with the Cauchy distribution $\mathcal{C}$:
+\begin{equation}
+    p_\phi(x_{t+1} | \hat{h}_{h+1} = \mathcal{C}(x_{t+1}; \mu_{\phi(t+1)}, \sigma_{\phi(t+1)})
+\end{equation}
+The loss for the decoder and the diffusion model are combined as such
+\begin{equation}
+    \mathcal{L} = \lambda \cdot \mathcal{L}_{\epsilon_\theta} - \log{\sigma_\phi} + \log{(X_{tar} - \mu_\phi)^2 + \sigma_\phi^2}
+\end{equation}
+
+During inference the model makes $M$ predictions. These predictions have an uncertainty, because of the probabilistic nature of the diffusion model, which can be described as a Gaussian distribution with $\sigma_\theta$. This Gaussian distribution represents the epistemic uncertainty. The uncertainties outputted through the Cauchy head can be regarded as the eleatoric uncertainty. Because both uncertainties are $\alpha$-stable they can be added together to form the final uncertainty of the prediction.
+\begin{equation}
+    \sigma = \underbrace{\sigma_\phi}_{aleatoric} + \underbrace{\sigma_\theta}_{epistemic} 
+\end{equation}
+
+Authors continue to evaluate the model on 3 datasets, Global Energy Forecasting (GEF) \cite{hong_probabilistic_2016}, Building Data Genome Project 2 (BDG2) \cite{miller_building_2020}, and Day-ahead electricity demand forecasting (COV) \cite{farrokhabadi_day-ahead_2020}. The authors performed an ablation study to measure the effects of the model as can be seen in \autoref{tab:diffload-results}. The o/o variant is without diffusion and Gaussian distribution heads on the decoder. The d/o variant is with diffusion and Gaussian, and d/c is with diffusion and Cauchy distribution. The results show a clear superiority to the model with diffusion and Cauchy distribution.
+
+\begin{table}[ht]
+    \centering
+    \begin{tabular}{cccccccccc}
+        \toprule
+        \multirow{2}{*}{Dataset} & \multirow{2}{*}{H} & \multirow{2}{*}{F} & \multicolumn{3}{c}{MAE} & \multicolumn{3}{c}{CRPS} \\
+        \cmidrule(lr){4-6} \cmidrule(lr){7-9}
+         & & & o/o & d/o & d/c & o/o & d/o & d/c \\
+        \midrule
+        GEF & - & - & 119.47 & 115.37 & \textbf{110.44} & 86.61 & \textbf{83.07} & 83.24 \\
+        \midrule
+        COV & - & - & 21844.0 & 22512.37 & \textbf{20308.3} & 16263.42 & 16705.65 & \textbf{15435.79} \\
+        \midrule
+        BDG2 & - & - & 12.76 & 12.38 & \textbf{11.18} & 9.35 & 9.16 & \textbf{8.72} \\
+        \bottomrule
+    \end{tabular}
+    \caption{DiffLoad Forecasting results \cite{wang_diffload_2023}}
+    \label{tab:diffload-results}
+\end{table}
+
+The authors use the same $\phi$ for both the encoder and decoder GRUs, it is unclear whether this means that they are using the same parameters. If the models are using the same parameters it would mean that this is not equal to the traditional sequence-to-sequence model. Moreover, the sequence-to-sequence is already becoming old, and better variants with Transformer layers have already been published \cite{nie_time_2023}. There is very little theory about how the epistemic and aleatoric uncertainties are split, and it is not compared with evaluations of their actual uncertainties. The details about how the model captures the different uncertainties are missing. Furthermore, it is not mentioned what the historical and future lengths are making it difficult to reproduce the results. Furthermore, the paper makes the mistake of switching the meaning of aleatoric and epistemic uncertainty often, making it confusing what they mean sometimes. This is the only implementation that performs latent space diffusion \cite{rombach_high-resolution_2022}, however, it is not typically conditioned latent space diffusion because the encoder's output is the "historical condition" for the decoder to generate the forecasts.

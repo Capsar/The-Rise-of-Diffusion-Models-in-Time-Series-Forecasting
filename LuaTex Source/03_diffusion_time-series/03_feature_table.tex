@@ -1,0 +1,23 @@
+\begin{table}
+\footnotesize
+\centering
+\begin{tabular}{l|l|l|l|l|l|l|l|l}
+\toprule
+\textbf{Paper} & \textbf{Name} & \textbf{Method} & \textbf{Input Data} & \textbf{AR} & \textbf{Gen. Method} & \textbf{Rev. Model} & \textbf{Task} & \textbf{Horizon} \\
+\midrule
+\cite{rasul_autoregressive_2021} (\ref{sec:timegrad}) &TimeGrad & Cond. Model & \emoji{left-arrow} & \emoji{repeat} & DDPM & Noise & \emoji{crystal-ball} & Short \\
+\cite{yan_scoregrad_2021} (\ref{sec:scoregrad}) &ScoreGrad & Cond. Model & \emoji{left-arrow} & \emoji{repeat} & SDE & Score & \emoji{crystal-ball} & Short \\
+\cite{tashiro_csdi_2021} (\ref{sec:csdi}) & CSDI & Cond. Model & \emoji{left-right-arrow} & \emoji{flashlight} & DDPM & Noise & \emoji{adhesive-bandage} & Short \\
+\cite{bilos_modeling_2022} (\ref{sec:dspd_cspd}) & DSPD & Cond. Model & \emoji{left-right-arrow} & \emoji{flashlight} & DDPM & Noise & \emoji{adhesive-bandage} & Short \\
+\cite{bilos_modeling_2022} (\ref{sec:dspd_cspd}) & CSPD & Cond. Model & \emoji{left-right-arrow} & \emoji{flashlight} & SDE & Noise & \emoji{adhesive-bandage} & Short \\
+\cite{li_generative_2022} (\ref{sec:d3vae}) & D$^3$VAE & Cond. Model & \emoji{left-arrow} & \emoji{flashlight} & Coupled DPM & BVAE & \emoji{crystal-ball} & Short \\
+\cite{chang_tdstf_2023} (\ref{sec:tdstf}) & TDSTF & Cond. Model & \emoji{left-arrow} & \emoji{flashlight} & DDPM & Noise & \emoji{crystal-ball} & Short \\
+\cite{alcaraz_diffusion-based_2023} (\ref{sec:sssds4}) & SSSD$^{S4}$ & Cond. Model & \emoji{left-right-arrow} & \emoji{flashlight} & DDPM & Noise & \emoji{adhesive-bandage} & Long \\
+\cite{wang_diffload_2023} (\ref{sec:diffload}) & DiffLoad & Cond. Model & \emoji{left-arrow} & \emoji{repeat} & DDPM & Noise & \emoji{crystal-ball} & Short \\
+\cite{shen_non-autoregressive_2023} (\ref{sec:timediff}) & TimeDiff & Cond. Model & \emoji{left-arrow} + Extras & \emoji{flashlight} & DDPM & Data & \emoji{crystal-ball}& Long \\
+\cite{kollovieh_predict_2023} (\ref{sec:tsdiff}) & TSDiff & Guidance & \emoji{left-arrow} & \emoji{flashlight} & DDPM & Noise & \emoji{crystal-ball} & Short \\
+\bottomrule
+\end{tabular}
+\caption{Comparison of diffusion models for time-series prediction. \textbf{Method}: Conditioned Model (\ref{sec:conditional_diff_model}), Guidance (\ref{sec:conditional_diff_guidance}); \textbf{Input Data}: \emoji{left-arrow} Data Before Prediction, \emoji{left-right-arrow} Data Before and After Prediction; \textbf{AR}: \emoji{repeat} Autoregressive, \emoji{flashlight} Generated at Once (Non-AR); \textbf{Generative Method}: DDPM (\ref{sec:unconditional_ddpm}), SDE (\ref{sec:unconditional_sde}) \textbf{Reverse Model}: Noise \eqref{eq:ddpm_noise_prediction}, Data \eqref{eq:ddpm_data_prediction}, Score \eqref{eq:cond_sde_reverse_time}; \textbf{Task}: \emoji{crystal-ball} Forecasting, \emoji{adhesive-bandage} Imputation. \textbf{Horizon}: Whether evaluated for Short ($\leq50$ steps) or Long ($\geq 50$ steps) horizons.}
+\label{tab:diffusion_implementations}
+\end{table}

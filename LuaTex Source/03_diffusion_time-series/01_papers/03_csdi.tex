@@ -1,0 +1,52 @@
+\subsection{CSDI: Conditional Score-based Diffusion Models for Probabilistic Time Series Imputation (2021) \cite{tashiro_csdi_2021}} \label{sec:csdi}
+The CSDI implementation is much like that of TimeGrad \cite{rasul_autoregressive_2021}, which is also based on DiffWave \cite{kong_diffwave_2020}. However instead of using a RNN to encode the conditional input, CSDI follows the future works of TimeGrad and makes use of a Transformer \cite{vaswani_attention_2017}. This modification allows the conditional input to be at arbitrary locations with respect to the target values, which allows imputation. 
+
+CSDI changes the problem statement to be compatible with imputation and does this by introducing a mask variable $m$ and a timestamp $s$ to the value vector, resulting in each time step resembling $\{x, m, s\}$. By introducing the mask, it can define which values are missing and require predictions. Keep in mind that forecasting is a specific case of imputation where all masked values are at the end of the time series sample. Furthermore, by introducing the timestamp, CSDI assumes that time intervals between consecutive data entries can be different allowing more flexibility in the data.
+
+CSDI uses a slight modification of formalization of reverse process described in  \autoref{eq:cond_time_reverse_process}, namely because of the imputation task, the $tar$ and $obs$ can be arbitrary points on the time-series and not necessarily split in historical and future points. Thus it becomes
+\begin{equation}
+ \label{eq:csdi_reverse_process}
+     p_\theta(X_{ta}^{0:K} | X_{co}) = p(X_{ta}^K)\prod_{k=1}^{K} p_\theta(X_{ta}^{k-1} \mid X_{ta}^k, X_{co}) \text{ where } p(X_{ta}^K) \sim \mathcal{N}(0, \mathbf{I})
+\end{equation}
+where $X_{ta}^{0:K}$ are the target timestamps and $X_{co}$ the conditional timestamps, future and past.
+
+CSDI uses the same parameterization of DDPM and conditions the model itself as in \autoref{eq:cond_ddpm_noise_prediction}. This also leads to corresponding conditioned noise loss function
+\begin{equation}
+\label{eq:csdi_loss_function}
+    \mathcal{L}_{\epsilon_\theta} = \mathbb{E}_{k, X_{ta}^0, \epsilon} \left[|| \epsilon - \epsilon_\theta(X_{ta}^k,  k | X_{co})||^2 \right]
+\end{equation}
+
+In CSDI, the same datasets are used as in TimeGrad and ScoreGrad but Exchange \cite{lai_modeling_2018} is left out. In the paper, mistakes about the descriptions of the datasets are made, namely the total number of steps as described in CSDI for the Traffic \& Solar datasets are wrong. They should be 4001 and 7009 respectively to be the same as in TimeGrad \& ScoreGrad through Gluon-TS\footref{fn:gluon-ts}. These mistakes were verified through contact with the author on GitHub. Furthermore the historical window for the forecasting is increased, compared to Tables \ref{tab:timegrad-results} and \ref{tab:scoregrad-results}.
+
+\begin{table}[ht]
+    \centering
+    \begin{tabular}{cccccc}
+        \toprule
+        \multirow{2}{*}{Dataset} & \multirow{2}{*}{H} & \multirow{2}{*}{F} & \multicolumn{3}{c}{CSDI} \\
+        \cmidrule(lr){4-6}
+        & & & CRPS & $\text{CRPS}_{\text{sum}}$ & MSE \\
+        \midrule
+        Solar & 168 & 24 & 0.338 $\pm$ 0.012 & 0.298 $\pm$ 0.004 & \num{9.0e2} $\pm$ \num{6.1e1} \\
+        \midrule
+        Electricity & 168 & 24 & 0.041 $\pm$ 0.000 & 0.017 $\pm$ 0.000 & \num{1.1e5} $\pm$ \num{2.8e3} \\
+        \midrule
+        Traffic & 168 & 24 & 0.073 $\pm$ 0.000 & 0.020 $\pm$ 0.001 & \num{3.5e-4} $\pm$ \num{7.0e-7} \\
+        \midrule
+        Taxi & 48 & 24 & 0.271 $\pm$ 0.001 & 0.123 $\pm$ 0.003 & \num{1.7e1} $\pm$ \num{6.8e-2} \\
+        \midrule
+        Wiki & 90 & 30 & 0.207 $\pm$ 0.002 & 0.047 $\pm$ 0.003 & \num{3.5e7} $\pm$ \num{4.4e4} \\
+        \bottomrule
+    \end{tabular}
+    \caption{CSDI Multivariate Forecasting results \cite{tashiro_csdi_2021}}
+    \label{tab:csdi-results}
+\end{table}
+
+Comparing the results to TimeGrad should be approached with caution, as the extended historical window length used in the experiments may serve as an advantage. This extended context could positively impact the results, potentially diminishing the apparent superiority of CSDI's forecasting performance.
+
+Furthermore, the method of masking used in CSDI is similar to inpainting in computer vision tasks. This inpainting has shown to cause artifacts between masked and observed regions call boundary disharmony  \cite{lugmayr_repaint_2022}. The masking method used in CSDI is also empirically shown the have the same effects in time-series \cite{shen_non-autoregressive_2023}.
+
+CSDI employs a automatic masking algorithm in order to generate the training data. This feature has a negative effect in situations where the data is extremely sparse as tackled in TDSTF by \textcite{chang_tdstf_2023}. In this paper, CSDI is used as a baseline for sparse data and does not deal with such sparse situations by excluding enough invalid information and thus over $99.5\%$ of the conditional data points were missing on average. This resulted in TDSTF being a order of magnitude faster than CSDI in training.
+
+Furthermore the computation time of the denoising network is quadratic in the number of variables and number of time-series points because it is based on two transformer networks. This causes it to run out of memory easily when modeling long multivariate time-series \cite{shen_non-autoregressive_2023}.
+
+Just like SSSD$^{\text{S4}}$ the conditioning is done in the denoising networks' intermediate layers and introduce inductive bias into the denoising objective, \textcite{shen_non-autoregressive_2023} hypothesises that this may not be enough to guide the network in capturing information from the history and leads to inaccurate predictions.

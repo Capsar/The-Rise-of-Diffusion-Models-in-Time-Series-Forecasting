@@ -1,0 +1,75 @@
+
+\documentclass{article}
+\usepackage{emoji}
+\usepackage{booktabs}
+\usepackage{cancel}
+\usepackage{graphicx}
+\usepackage[natbib=true,style=ieee,backref=true,maxcitenames=2,mincitenames=1]{biblatex}
+\addbibresource{references.bib}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{positioning, arrows, arrows.meta, chains, decorations.pathreplacing, calligraphy, shapes.geometric, math, calc, patterns}
+\usepackage{pgfplots}
+\usepgfplotslibrary{fillbetween} 
+\pgfplotsset{compat=1.17}
+
+\usepackage{multirow}
+\usepackage{siunitx}
+\sisetup{output-exponent-marker=\ensuremath{\mathrm{e}}}
+\usepackage{hyperref}
+
+
+% Definition of the Gaussian function
+\pgfmathdeclarefunction{gauss}{3}{%
+  \pgfmathparse{1/(#3*sqrt(2*pi))*exp(-((#1-#2)^2)/(2*#3^2))}%
+}
+
+\pgfmathdeclarefunction{normcdf}{3}{%
+  \pgfmathparse{1/(1 + exp(-0.07056*((#1-#2)/#3)^3 - 1.5976*(#1-#2)/#3))}%
+}
+
+\newif\ifcomm
+% \commfalse to disable comments, \commtrue to enable them
+ %\commfalse
+\commtrue
+\newcommand{\lc}[1]{{\color{magenta} \ifcomm \texttt{} Lydia: #1 \fi}}
+
+\newcommand{\cc}[1]{{\color{green} \ifcomm \texttt{} Caspar: #1 \fi}}
+\newcommand{\me}{\mathrm{e}}
+\newcommand{\md}{\mathrm{d}}
+\newcommand{\lfootnote}[3]{\footnote{\label{fn:#1} #2 \url{#3}}}
+
+\title{The Rise of Diffusion Models in Time-Series Forecasting}
+\author{Caspar Meijer \\
+        EEMCS Distributed Systems \\
+        Delft University of Technology \\
+        \texttt{c.j.meijer-1@student.tudelft.nl} 
+        \and
+        Lydia Y. Chen \\
+        EEMCS Distributed Systems \\
+        Delft University of Technology \\
+        \texttt{y.chen-10@tudelft.nl}}
+\date{18 December 2023}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This survey delves into the application of diffusion models in time-series forecasting. Diffusion models are demonstrating state-of-the-art results in various fields of generative AI.
+The paper includes comprehensive background information on diffusion models, detailing their conditioning methods and reviewing their use in time-series forecasting. The analysis covers 11 specific time-series implementations, the intuition and theory behind them, the effectiveness on different datasets, and a comparison among each other.
+Key contributions of this work are the thorough exploration of diffusion models' applications in time-series forecasting and a chronologically ordered overview of these models. Additionally, the paper offers an insightful discussion on the current state-of-the-art in this domain and outlines potential future research directions. This serves as a valuable resource for researchers in AI and time-series analysis, offering a clear view of the latest advancements and future potential of diffusion models.
+\end{abstract}
+
+\input{01_Introduction}
+\input{02_Preliminary} \newpage
+\input{03_Diffusion_time-series}
+\input{04_Discussion_conclusion_future}
+
+
+\printbibliography
+
+\end{document}
+

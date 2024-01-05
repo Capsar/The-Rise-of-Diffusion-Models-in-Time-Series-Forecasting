@@ -1,0 +1,151 @@
+\subsubsection{Conditional Denoising Model} \label{sec:conditional_diff_model}
+Conditional versions of the model can be extended to embrace additional input \( c \), altering the backward denoising step in \autoref{eq:diff_reverse_process} \cite{ho_cascaded_2021}:
+\begin{equation} \label{eq:cond_reverse_process}
+ p_\theta(x^{0:K} | \mathbf{c}) = p(x^K)\prod_{k=1}^{K} p_\theta(x^{k-1} \mid x^k, \mathbf{c}) \text{ with } p_\theta(x^{k-1}|x^k, \mathbf{c}) = \mathcal{N} (x^{k-1}; \mu_\theta(x^k, k|\mathbf{c}), \sigma^2_k \mathbf{I})   
+\end{equation}
+Consequently, the noise and data variants of the prediction models are conditioned as respectively:
+\begin{equation} \label{eq:cond_ddpm_noise_prediction}
+    \mu_\epsilon(\epsilon_\theta, \mathbf{c}) = \frac{1}{\sqrt{1 - \beta_k}}\left(x^k - \frac{\beta_k}{\sqrt{1 - \alpha_k}} \epsilon_\theta(x^k, k | \mathbf{c}) \right)
+\end{equation}
+\begin{equation} \label{eq:cond_ddpm_data_prediction}
+    \mu_x(x_\theta, \mathbf{c}) = \frac{\sqrt{1 - \beta_k}(1 - \alpha_{k-1})}{1 - \alpha_k} x^k + \frac{\sqrt{\alpha_{k-1}}\beta_k}{1 - \alpha_k} x_\theta(x_k, k | \mathbf{c})
+\end{equation}
+where the conditioning in practice are extra inputs to the prediction model as illustrated in \autoref{fig:conditional_prediction_models}. The same condition is included in each backwards step.
+
+\begin{figure}[ht] 
+\centering
+\begin{tikzpicture}[
+    auto,
+    >={Latex[width=2mm,length=2mm]},
+    data/.style={rectangle, draw=black, fill=green!20, align=center, rounded corners, minimum width=1.5cm, minimum height=1cm},
+    model/.style={rectangle, draw=black, fill=red!20, align=center, rounded corners, minimum width=2.5cm, minimum height=1cm},
+    condition/.style={rectangle, draw=black, fill=yellow!50, align=center, rounded corners, minimum width=1.5cm, minimum height=1cm},
+    every node/.style={font=\sffamily},
+    node distance=1.5cm
+]
+
+% Nodes
+\node (dots1) [right=1cm of x0] {\(\cdots\)};
+\node[data] (xk-1) [right=1cm of dots1] {\(x^{k-1}\)}; 
+\node[data] (xk) [right=9cm of xk-1] {\(x^k\)}; 
+\node (dots2) [right=1cm of xk] {\(\cdots\)};
+
+% Model node with the equations
+\node[model] (nn) [below=25pt of $(xk-1)!0.5!(xk)$] {
+    $x^{k-1} = \mu_\theta(x^k, k | \mathbf{c}) 
+    \begin{cases}
+            \mu_\epsilon(\epsilon_\theta, \mathbf{c}) & \eqref{eq:cond_ddpm_noise_prediction} \\
+            \mu_x(x_\theta, \mathbf{c}) & \eqref{eq:cond_ddpm_data_prediction}
+    \end{cases}
+    + \sigma_k \mathbf{z}$
+};
+
+\node[condition] (cond) [right=of nn] {Condition: $\mathbf{c}$}; 
+
+\node[above=3pt of nn] (equation_p) {$p_\theta(x^{k-1}|x^k, \mathbf{c}) = \mathcal{N} (x^{k-1}; \mu_\theta(x^k, k | \mathbf{c}), \sigma^2_k \mathbf{I})$};
+
+% Forward process arrows
+\draw[->] ([yshift=10pt] dots1.east) -- ([yshift=10pt] xk-1.west);
+\draw[->] ([yshift=10pt] xk-1.east) -- ([yshift=10pt] xk.west); 
+\draw[->] ([yshift=10pt] xk.east) -- ([yshift=10pt] dots2.west);
+
+% Reverse process arrows
+\draw[->] ([yshift=-10pt] dots2.west) --  ([yshift=-10pt] xk.east); 
+\draw[->] ([yshift=-10pt] xk-1.west) -- ([yshift=-10pt] dots1.east); 
+
+\draw[->] ([yshift=-10pt] xk.west) -- ([yshift=0pt] nn.east); 
+\draw[->] ([yshift=0pt] nn.west) -- ([yshift=-10pt] xk-1.east);
+
+\draw[->] (cond.west) -- (nn.east);
+
+\end{tikzpicture}
+
+
+\caption{Illustration for conditional prediction models of the reverse process.}
+\label{fig:conditional_prediction_models}
+\end{figure}
+
+For the score-based generative models through SDE such conditioning also exists, where the conditioning happens in the marginal distributions of the score \cite{yan_scoregrad_2021}. The reverse-time SDE becomes: 
+\begin{equation} \label{eq:cond_sde_reverse_time}
+    dx = \left[ f(x, k) = g(k)^2 \nabla_{x} \log{p_k(x|\mathbf{c})} \right] dk + g(k)d\bar{w}
+\end{equation}
+and the objective function then becomes
+\begin{equation} \label{eq:cond_sde_train_obj}
+    \mathcal{L}_k = \mathbb{E}_{k, x(0), x(k)} \left[\left|\left| \nabla_{x(k)} \log{p_{0k}(x(k) | x(0))} - s_\theta(x(k),  k | \mathbf{c})\right|\right|^2 \right]    
+\end{equation}.
+
+\subsubsection{Diffusion Guidance} \label{sec:conditional_diff_guidance}
+In traditional diffusion models, conditioning is typically introduced during the training process, as represented in equation \eqref{eq:cond_reverse_process}. However, a novel approach introduces conditions during the inference stage by employing the concept of guidance \cite{sohl-dickstein_deep_2015, song_score-based_2021}. This method is grounded in the application of the Bayes rule to the probability $p(x^k|\mathbf{c})$ given by:
+\begin{align}
+    p(x^k|\mathbf{c}) &= \frac{p(\mathbf{c}|x^k) \times p(x^k)}{p(\mathbf{c})} 
+\end{align}
+Taking the natural logarithm of both sides, we can further derive:
+\begin{align} 
+    \log{p(x^k|\mathbf{c})} &= \log{p(\mathbf{c}|x^k)} + \log{p(x^k)} - \log{p(\mathbf{c})} 
+\end{align}
+From which, upon differentiation with respect to $x^k$, we obtain:
+\begin{align} \label{eq:guid_gradient_relation}
+    \nabla_{x^k} \log p(x^k|\mathbf{c}) &= \nabla_{x^k} \log p(\mathbf{c}|x^k) + \nabla_{x^k} \log p(x^k) 
+\end{align}
+The relation in \eqref{eq:guid_gradient_relation} provides a bridge to guide the reverse diffusion process in equation \eqref{eq:diff_reverse_process} and \eqref{eq:sde_reverse_process}. Instead of merely reversing the diffusion, this guides the samples to conform to the desired condition $\mathbf{c}$ \cite{sohl-dickstein_deep_2015, song_score-based_2021}. Thus, equation \eqref{eq:diff_reverse_process} can be conditioned as:
+\begin{equation} \label{eq:guid_reverse_process}
+    p_\theta(x^{k-1} | x^k, \mathbf{c}) = \mathcal{N} (x^{k-1}; \mu_\theta(x^k, k), \sigma^2_k \mathbf{I}) + s\sigma^2_k\nabla_{x^k} \log p(\mathbf{c}|x^k) 
+\end{equation}
+Here, $s\sigma^2_k\nabla_{x^k} \log p(\mathbf{c}|x^k)$ is the guidance term that drives the generated image towards the target condition. $s$ is a scale parameter controlling the guidance strength. The gradient $\nabla_x \log{p_k(\mathbf{c} | x)}$ can be estimated in two ways: the first involves training an auxiliary model as described by \cite{luo_understanding_2022} and the second method, described by \textcite{song_score-based_2021, luo_understanding_2022}, which doesn't require a auxiliary model. In \autoref{fig:guidance_prediction_models} the $\nabla_{x^k} \log p(\mathbf{c}|x^k)$ is termed $g(\mathbf{c}, x^k)$ as the guidance gradient.
+
+Such guidance can also be applied to the continuous diffusion models as described by \textcite{song_score-based_2021}. For equation \eqref{eq:sde_reverse_process}, it can be conditioned as:
+\begin{equation}
+    \md x = \left\{ f(x, k) - g(k)^2 \left[ \nabla_x \log{p_k(x)} + \nabla_x \log{p_k(\mathbf{c} | x)}  \right] \right\} \md k + g(k)d\bar{w}
+\end{equation}
+
+\begin{figure}[ht] 
+\centering
+\begin{tikzpicture}[
+    auto,
+    >={Latex[width=2mm,length=2mm]},
+    data/.style={rectangle, draw=black, fill=green!20, align=center, rounded corners, minimum width=1.5cm, minimum height=1cm},
+    model/.style={rectangle, draw=black, fill=red!20, align=center, rounded corners, minimum width=2.5cm, minimum height=1cm},
+    condition/.style={rectangle, draw=black, fill=yellow!50, align=center, rounded corners, minimum width=1.5cm, minimum height=1cm},
+    every node/.style={font=\sffamily},
+    node distance=1.5cm
+]
+
+% Nodes
+\node (dots1) [right=1cm of x0] {\(\cdots\)};
+\node[data] (xk-1) [right=1cm of dots1] {\(x^{k-1}\)}; 
+\node[data] (xk) [right=10cm of xk-1] {\(x^k\)}; 
+\node (dots2) [right=1cm of xk] {\(\cdots\)};
+
+% Model node with the equations
+\node[model] (nn) [below=25pt of $(xk-1)!0.5!(xk)$] {
+    $x^{k-1} = \mu_\theta(x^k, k) 
+    \begin{cases}
+            \mu_\epsilon(\epsilon_\theta) & \eqref{eq:cond_ddpm_noise_prediction} \\
+            \mu_x(x_\theta) & \eqref{eq:cond_ddpm_data_prediction}
+    \end{cases}
+    + \sigma_k \mathbf{z} + s\sigma^2_k g(\mathbf{c}|x^k)$
+};
+
+\node[condition] (cond) [right=of nn] {Condition: $\mathbf{c}$};
+
+\node[above=3pt of nn] (equation_p) {$p_\theta(x^{k-1}|x^k, \mathbf{c}) = \mathcal{N} (x^{k-1}; \mu_\theta(x^k, k), \sigma^2_k \mathbf{I}) + s\sigma^2_k g(\mathbf{c}|x^k)$};
+
+% Forward process arrows
+\draw[->] ([yshift=10pt] dots1.east) -- ([yshift=10pt] xk-1.west);
+\draw[->] ([yshift=10pt] xk-1.east) -- ([yshift=10pt] xk.west); 
+\draw[->] ([yshift=10pt] xk.east) -- ([yshift=10pt] dots2.west);
+
+% Reverse process arrows
+\draw[->] ([yshift=-10pt] dots2.west) --  ([yshift=-10pt] xk.east); 
+\draw[->] ([yshift=-10pt] xk-1.west) -- ([yshift=-10pt] dots1.east); 
+
+\draw[->] ([yshift=-10pt] xk.west) -- ([yshift=0pt] nn.east); 
+\draw[->] ([yshift=0pt] nn.west) -- ([yshift=-10pt] xk-1.east);
+
+\draw[->] (cond.west) -- (nn.east);
+
+\end{tikzpicture}
+
+\caption{Illustration for conditional prediction models of the reverse process.}
+\label{fig:guidance_prediction_models}
+\end{figure}

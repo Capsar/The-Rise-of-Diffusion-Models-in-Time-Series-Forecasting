@@ -1,0 +1,56 @@
+\subsection{TSDiff: Predict, Refine, Synthesize: Self-Guiding Diffusion Models for Probabilistic Time Series Forecasting (2023) \cite{kollovieh_predict_2023}} \label{sec:tsdiff}
+TSDiff is a model that is trained unconditionally and employs the diffusion guidance, explained in \autoref{sec:conditional_diff_guidance}, to condition univariate forecasts during inference. Based on models that use guidance \cite{dhariwal_diffusion_2021, ho_classifier-free_2022}, the authors propose a self-guidance mechanism that allows the conditioning during inference without an auxiliary network. This makes it applicable to various downstream tasks. It specifically investigates the usability of task-agnostic unconditional diffusion models for forecasting tasks.
+
+The authors have based the architecture on that of SSSD$^{\text{S4}}$ with a modification on how the time-series is represented. Since the model is designed for univariate time-series it has a whole input dimension left to fill, thus the model sort of folds the time-series in $C$ sections resulting in an input $x \in \mathbb{R}^{L \times C}$, replacing the $d$ as explained in \autoref{sec:time-series_problem_definition}. $L$ is the length of the time-series $H+F$, and additional historical data can be included in the other $C-1$ 'folds'. The target series becomes $x_{tar}$ and the observations are $x_{obs}$, the small $x$ denoting the univariate series. It is important to understand that the model will be trained on $X_{obs+tar}$, as the intuition behind the self-guidance is that a model that can generate $obs+tar$ sequences, should also be able to reasonably generate sequences $tar$ while being guided towards $obs$.
+The authors propose two observation self-guidance approaches, namely the mean square self-guidance and the quantile self-guidance. 
+
+\textbf{Mean Square Self-Guidance:}
+Following from \autoref{eq:guid_reverse_process}, the guidance term $p(\mathbf{c}|x_{tar}^k)$ parameterized and modeled as a multivariate Gaussian distribution
+\begin{equation}
+    p_\theta(\mathbf{c} | x^k) = \mathcal{N}(x_{obs}| f_\theta(x^k, k), \mathbf{I})    
+\end{equation}
+where $f_\theta$ is a function that approximates $x^0$ given the diffused time-series $x^k$. Now this function can be expressed using the noise prediction model \eqref{eq:ddpm_noise_prediction} by rearranging \autoref{eq:ddpm_get_xk} as
+\begin{equation}
+    f_\theta(x_{tar}^k, k) = \frac{x_{tar}^k - \sqrt{1 - \alpha_k} \epsilon_\theta(x_{tar}^k, k)}{\sqrt{\alpha_k}}
+\end{equation}
+With this function, the MSE loss is calculated as $\text{MSE}(f_\theta(x_{tar}^k, k), x_{obs})$ then the gradients are calculated against $x_{tar}^k$. Thus by guiding the denoising steps such that it minimizes the MSE of the observed data in the generated series, it also guides it toward the forecasted data.
+
+\textbf{Quantile Self-Guidance:}
+This guidance goes further to minimize the quantile loss, also known the pinball loss. This loss is based on the CRPS metric, and thus takes all quantiles of the distribution into account, making it more refined than the Mean Square Self-Guidance.
+So instead of minimizing the MSE, the quantile self-guidance minimizes the quantile loss. 
+\begin{equation}
+    \mathcal{L}_{quantile} = \max \{\kappa \cdot (x_{obs} - f_\theta(x^k, k)), (\kappa - 1) \cdot (x_{obs} - f_\theta(x^k, k))\}    
+\end{equation}
+where $\kappa \in (0,1)$ specifies the quantile level. In practice \textcite{kollovieh_predict_2023} used multiple evenly spaced quantile levels, based on the number of forecasts. Because the uncertainty is estimated by forecasting multiple times.
+
+\textcite{kollovieh_predict_2023} perform forecasting experiments on eight univariate time series datasets available through GluonTS\footref{fn:gluon-ts}: Solar\cite{lai_modeling_2018}, Electricity \cite{trindade_electricityloaddiagrams20112014_2015}, Traffic \cite{cuturi_pems-sf_2011}, Exchange \cite{lai_modeling_2018}, M4 \cite{makridakis_m4_2020}, UberTLC\cite{nyc_taxi_and_limousine_commission_tlc_2015}\lfootnote{fivethirtyeight}{FiveThirtyEight: }{https://github.com/fivethirtyeight/uber-tlc-foil-response}, KDDCup\cite{godahewa_monash_2021}, and Wikipedia\cite{gasthaus_probabilistic_2019}. The evaluation method used is CRPS \eqref{eq:crps} and the distributions were gathered by forecasting 100 times.
+\begin{table}[ht]
+    \centering
+    \begin{tabular}{cccccccccc}
+        \toprule
+        \multirow{2}{*}{Dataset} & \multirow{2}{*}{H} & \multirow{2}{*}{F} & \multicolumn{4}{c}{CRPS} \\
+        \cmidrule(lr){4-7}
+         & & & CSDI & TSDiff-Cond & TSDiff-MS & TSDiff-Q \\
+        \midrule
+        Solar & 336 & 24 & $0.352 \pm 0.005$ & $\mathbf{0.338 \pm 0.014}$ & $0.391 \pm 0.003$ & $0.358 \pm 0.020$ \\
+        \midrule
+        Electricity & 336 & 24 & $0.054 \pm 0.000$ & $0.050 \pm 0.002$ & $0.062 \pm 0.001$ & $\mathbf{0.049 \pm 0.000}$ \\
+        \midrule
+        Traffic & 336 & 24 & $0.159 \pm 0.002$ & $\mathbf{0.094 \pm 0.003}$ & $0.116 \pm 0.001$ & $0.098 \pm 0.002$ \\
+        \midrule
+        Exchange & 360 & 30 & $0.033 \pm 0.014$ & $0.013 \pm 0.002$ & $0.018 \pm 0.003$ & $\mathbf{0.011 \pm 0.001}$ \\
+        \midrule
+        M4 & 312 & 48 & $0.040 \pm 0.003$ & $0.039 \pm 0.006$ & $0.045 \pm 0.000$ & $\mathbf{0.036 \pm 0.001}$ \\
+        \midrule
+        UberTLC & 336 & 24 & $0.206 \pm 0.002$ & $0.172 \pm 0.008$ & $0.183 \pm 0.007$ & $\mathbf{0.172 \pm 0.005}$ \\
+        \midrule
+        KDDCup & 312 & 48 & $0.318 \pm 0.002$ & $0.754 \pm 0.007$ & $0.325 \pm 0.028$ & $\mathbf{0.311 \pm 0.026}$ \\
+        \midrule
+        Wikipedia & 360 & 30 & $0.289 \pm 0.017$ & $\mathbf{0.218 \pm 0.010}$ & $0.257 \pm 0.001$ & $0.221 \pm 0.001$ \\
+        \bottomrule
+    \end{tabular}
+    \caption{TSDiff Univariate Forecasting results \cite{kollovieh_predict_2023}}
+    \label{tab:tsdiff-results}
+\end{table}
+
+Unfortunately, the model is designed and evaluated for univariate time-series. The authors mention that the model can be extended with a Transformer \cite{vaswani_attention_2017} model operating across the feature dimensions after the S4 layer. However, this would limit the current implementation of extra historical information in the folds. $C$ will be replaced with $d$, reducing the possible historical information. The model using quantile guidance performs well compared to CSDI [\ref{sec:csdi}], however, it is rather unfortunate the paper does not compare the results with SSSD$^{\text{S4}}$ [\ref{sec:sssds4}] on which the model is based. The paper also extends the usage of the guidance for other tasks such as refining existing predictions of other forecasting models or training models on synthetic data. To conclude, the model is not as strong for forecasting as other conditioned models but the guidance is a novel approach and deserves more research attention concerning time-series.

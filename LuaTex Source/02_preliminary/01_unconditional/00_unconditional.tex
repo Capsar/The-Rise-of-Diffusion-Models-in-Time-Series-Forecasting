@@ -1,0 +1,81 @@
+The foundational works of diffusion models were established by \textcite{ho_denoising_2020, song_score-based_2021}. These foundations are the unconditional generation of data, which means to create data samples without relying on specific conditions, such as text prompts.
+Formally, unconditional generation can be described as viewing the training data ${x}$ as a distribution $q(x)$ from which it is possible to extract samples described by $x \in \mathcal{R}^d$. Now the goal is to approximate this distribution as $p_\theta(x)$ and be able to sample new unseen data from this approximation \cite{luo_understanding_2022}.
+
+Diffusion models approximate the distribution by learning how data can be recovered after it has been diffused to pure noise. The model attempts to transform a Gaussian distribution back into the data distribution as illustrated in \autoref{fig:noise_to_data}. This process enables the model to generate data samples from noise, noise is turned into data that resembles the training dataset.
+
+Where \textcite{ho_denoising_2020} describes the diffusion and denoising processes as discrete steps and \textcite{song_score-based_2021} generalizes these processes to continuous time with the use of stochastic differential equations (SDE). The discrete implementation is described in section \ref{sec:unconditional_ddpm} and the continuous version in section \ref{sec:unconditional_sde}.
+However, unconditional generation is not useful if specific data samples are desired. For instance, generating images that contain specifics that are described through text prompts \cite{rombach_high-resolution_2022}. Such conditional generation of data is further explained in section \ref{sec:conditional_diff}
+
+\begin{figure}[b]
+\centering
+    \noindent\begin{tikzpicture}
+      \pgfmathsetmacro\GraphWidth{\textwidth/5} 
+      \pgfmathsetmacro\GraphOffset{\textwidth/5 / 30} 
+    
+      \newcommand{\drawborder}[1]{
+        \draw [thick] ([xshift=-1mm,yshift=-1mm]#1.south west) rectangle ([xshift=1mm,yshift=1mm]#1.north east);
+      }
+        \pgfplotsset{
+          myaxis/.style={
+            width=\GraphWidth, 
+            height=\GraphWidth/2,
+            scale only axis,
+            axis lines=middle,
+            ticks=none,
+            axis line style={draw=none},
+            xmin=-3, xmax=3,
+            ymin=0, ymax=0.45,
+          }
+        }
+    
+      % First Graph
+      \begin{scope}[shift={(0,0)}, rotate=-90]
+          \begin{axis}[name=plot1, myaxis]
+          \addplot [smooth,thick,domain=-3:3, blue!40] {(gauss(x, 0, 0.25) + gauss(x, 2, 0.3) + gauss(x, -1.8, 0.2)) / 5};
+          \end{axis}
+          \drawborder{plot1}
+          \node [above] at ([xshift=-1mm]plot1.west) {Data};
+      \end{scope}
+    
+      % Second Graph
+      \begin{scope}[shift={(\GraphOffset,0)}, rotate=-90]
+          \begin{axis}[name=plot2, myaxis]
+          \addplot [smooth,thick,domain=-3:3, blue!40] {(gauss(x, 0, 0.4) + gauss(x, 2, 0.5) + gauss(x, -1.5, 0.35)) / 5};
+          \end{axis}
+          \drawborder{plot2}
+      \end{scope}
+    
+      % % Third Graph
+      \begin{scope}[shift={(\GraphOffset*2,0)}, rotate=-90]
+          \begin{axis}[name=plot3, myaxis]
+          \addplot [smooth,thick,domain=-3:3, blue!40] {(gauss(x, 0, 0.6) + gauss(x, 1.5, 0.5) + gauss(x, -1.3, 0.5)) / 5};
+          \end{axis}
+          \drawborder{plot3}
+      \end{scope}
+    
+      % % Fourth Graph
+        \begin{scope}[shift={(\GraphOffset*3,0)}, rotate=-90]
+          \begin{axis}[name=plot4, myaxis]
+          \addplot [smooth,thick,domain=-3:3, blue!40] {(gauss(x, 0, 0.8) + gauss(x, 0.7, 0.5) + gauss(x, -0.5, 0.4)) / 5};
+          \end{axis}
+          \drawborder{plot4}
+      \end{scope}
+
+      % % Fourth Graph
+        \begin{scope}[shift={(\GraphOffset*4,0)}, rotate=-90]
+          \begin{axis}[name=plot5, myaxis]
+            \addplot [smooth,thick,domain=-3:3, blue!40] {gauss(x, 0, 1)};
+        \end{axis}
+          \drawborder{plot5}
+          \node [above] at ([xshift=-1mm]plot5.west) {Noise};
+      \end{scope}
+
+    
+      \draw[thick,->] ([yshift=-4mm]plot5.east) -- node[below] {Denoising / Reverse Process} ([yshift=-5mm]plot1.east);
+      
+    \end{tikzpicture}
+    \caption{Probability Distribution Evolution: From Noise to Data} \label{fig:noise_to_data}
+\end{figure}
+
+\input{02_preliminary/01_unconditional/01_denoising_diffusion_probabilistic_models}
+\input{02_preliminary/01_unconditional/02_score-based_generative_through_SDE}

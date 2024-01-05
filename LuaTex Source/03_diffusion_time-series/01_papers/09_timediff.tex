@@ -1,0 +1,70 @@
+\subsection{TimeDiff: Non-autoregressive Conditional Diffusion Models for Time Series Prediction (2023) \cite{shen_non-autoregressive_2023}} \label{sec:timediff}
+The TimeDiff model addresses the shortcomings of CSDI and SSSD$^{\text{S4}}$ by introducing additional inductive bias in the conditioning module that is tailor-made for time-series. It does this by two conditioning mechanisms: "Future Mixup" and "Autoregressive initialization".
+Future mixup is based on mixup by \textcite{zhang_mixup_2018} and is extended to randomly reveal parts of the ground-truth future predictions during training. Autoregressive initialization works by learning a linear autoregressive model on the data that provides an initial linear guess for the predictions. 
+
+\textbf{Future mixup:}
+The ideal condition generates the forecast is $X_{tar}$ itself, this is not available during inference, but it is during training. Inspired by mixup \cite{zhang_mixup_2018}, the revealing of the ground-truth works by creating a conditioning variable $z_{mix} \in \mathbb{R}^{d \times F}$ that is of the same size as $X_{tar}$. During inference this variable will be filled with a mapping of the historical data as seen in \autoref{eq:zmix_inference}. However, since this historical data can have a different size it is mapped through a convolution network $\mathcal{F}$ to end up with the same dimensions.
+\begin{equation} \label{eq:zmix_inference}
+    z_{mix} = \mathcal{F}(X_{obs})
+\end{equation}
+Now, during training, randomly selected data points of $X_{tar}$ are also included, as seen in \autoref{eq:zmix_training}, by using a mask variable $m^k \in [0,1)^{d \times F}$ where each value is sampled from the uniform distribution $[0, 1)$.
+\begin{equation} \label{eq:zmix_training}
+    z_{mix} = m^k \odot \mathcal{F}(X_{obs}) + (1 - m^k) \odot X_{tar}^0
+\end{equation}
+
+\textbf{Autoregressive initialization:}
+For non-autoregressive models often produce disharmony at the boundaries between masked and observed regions \cite{lugmayr_repaint_2022}. \textcite{shen_non-autoregressive_2023} state that for time series forecasting, this translates to disharmony between historical and future segments. To solve this problem they propose the linear autoregressive (AR) model $\mathcal{M}_{ar}$ which will make an initial guess $z_{ar} \in \mathbb{R}^{d \times H}$ for $X_{tar}$. This model cannot capture the complex non-linear patterns in time-series, but it can approximate the simple ones, such as short-term trends \cite{lai_modeling_2018}.
+The initial guess $z_{ar}$ is made by training the following to predict $X_{tar}$:
+\begin{equation}
+    z_{ar} = \sum_{t=-H}^0 W_t \odot \bar{X}_t + B
+\end{equation}
+where $\bar{X}_t^0 \in \mathbb{R}^{d \times F}$ is a matrix that is filled with $F$ vectors of $x_t$ where $t$ is the timestep in $obs$, and $W_t \in \mathbb{R}^{d \times F}$ and $B \in \mathbb{R}^{d \times H}$ are to be trained.
+
+Both of the conditions $z_{mix}$ and $_{ar}$ are combined as:
+\begin{equation}
+    \mathbf{c} = \text{concat}([z_{mix}, z_{ar}]) \in \mathbb{R}^{2d \times F}
+\end{equation}
+
+Furthermore, the objective function is set to reduce the error in predicting the data directly \eqref{eq:cond_ddpm_data_prediction} instead of the noise \eqref{eq:cond_ddpm_noise_prediction}. The paper shows empirically that predicting the data performs better and hypothesizes that it is due time-series containing quite some noise inherently.
+\begin{equation}
+    \mathcal{L}_{x_\theta} = \mathbb{E}_{k, X_{tar}^0, \epsilon} \left[|| X_{tar}^0 - x_\theta(X_{tar}^k, k | \mathbf{c})||^2 \right]
+\end{equation}
+
+\textcite{shen_non-autoregressive_2023} evaluates its model TimeDiff on nine real world datasets: NordPool \cite{nordpool_group_nordpool_2020}\lfootnote{depts}{DEPTS \cite{fan_depts_2022}: }{https://github.com/weifantt/DEPTS}, Caiso \cite{energy_online_caiso_2012}\footref{fn:depts}, Traffic\cite{cuturi_pems-sf_2011}\lfootnote{autoformer_datasets}{AutoFormer \cite{wu_autoformer_2022}: }{https://github.com/thuml/Autoformer}, Electricity\cite{trindade_electricityloaddiagrams20112014_2015}\footref{fn:autoformer_datasets}, Weather\cite{max-planck-institut_fuer_biogeochemie_weather_2008}\footref{fn:autoformer_datasets}, Exchange \cite{lai_modeling_2018}\footref{fn:autoformer_datasets}, ETTh1\footref{fn:ett}, ETTm1\footref{fn:ett}, Wind\footref{fn:wind}. For each model the historical length $H$ is selected from $\{96, 192, 720, 1440\}$ by testing which works best on the validation set. The paper does not specify which is used in the experiments as shown in \autoref{tab:timediff-results}.
+
+\begin{table}[ht]
+    \centering
+    \begin{tabular}{cccccccccc}
+        \toprule
+        \multirow{2}{*}{Dataset} & \multirow{2}{*}{H} & \multirow{2}{*}{F} & \multicolumn{5}{c}{MSE} \\
+        \cmidrule(lr){4-8}
+         & & & TimeDiff & TimeGrad & CSDI & SSSD & D3VAE \\
+        \midrule
+        \multirow{1}{*}{NorPool} & \dots  & 720 & \textbf{0.665} & 1.152 & 1.011 & 0.872 & 0.745 \\
+        \midrule
+        \multirow{1}{*}{Caiso} & \dots  & 720 & \textbf{0.136} & 0.258 & 0.253 & 0.195 & 0.241 \\
+        \midrule
+        \multirow{1}{*}{Weather} & \dots  & 672 & \textbf{0.311} & 0.392 & 0.356 & 0.349 & 0.375 \\
+        \midrule
+        \multirow{1}{*}{ETTm1} & \dots  & 192 & \textbf{0.336} & 0.874 & 0.529 & 0.464 & 0.362 \\
+        \midrule
+        \multirow{1}{*}{Wind} & \dots  & 192 & \textbf{0.896} & 1.209 & 1.066 & 1.188 & 1.118 \\
+        \midrule
+        \multirow{1}{*}{Traffic} & \dots  & 168 & \textbf{0.564} & 1.745 & N/A & 0.642 & 0.928 \\
+        \midrule
+        \multirow{1}{*}{Electricity} & \dots  & 168 & \textbf{0.193} & 0.736 & N/A & 0.255 & 0.286 \\
+        \midrule
+        \multirow{1}{*}{ETTh1} & \dots  & 168 & \textbf{0.407} & 0.993 & 0.497 & 0.726 & 0.504 \\
+        \midrule
+        \multirow{1}{*}{Exchange} & \dots  & 14 & \textbf{0.018} & 0.079 & 0.077 & 0.061 & 0.200 \\
+        \bottomrule
+    \end{tabular}
+    \caption{TimeDiff Multivariate Forecasting results \cite{shen_non-autoregressive_2023}}
+    \label{tab:timediff-results}
+\end{table}
+
+Furthermore, the authors perform an ablation study on the future mixup and AR, resulting in a clear win if both are implemented. They even went as far as implementing these features on CSDI [\ref{sec:csdi}] and SSSD$^{\text{S4}}$ [\ref{sec:sssds4}] which also showed that by combining the features resulted in the best performance on ETTh1\footref{fn:ett} and ETTm1\footref{fn:ett}. CSDI with mixup and AR fell short on performance compared to TimeDiff, while SSSD$^{\text{S4}}$ achieves comparable results.
+Besides the better conditioning, the performance of using the data prediction model is also shown across the Caiso\footref{fn:depts}, Electricity\footref{fn:autoformer_datasets}, Exchange\footref{fn:autoformer_datasets} and Etth1\footref{fn:ett} datasets. 
+However, unfortunately, the authors do not perform the experiments of SSSD$^{\text{S4}}$ with mixup, AR, and a data prediction model. By also including the data prediction model it could have been even better.
+Furthermore, the implementation still struggles with a large amount of input features learning the multivariate dependencies. The paper considers using graph neural networks to capture these dependencies.
+The paper mentions it has not solved the open question of how to design an efficient denoising network and conditioning network in time series diffusion models.

@@ -1,0 +1,116 @@
+\subsubsection{Evaluation Metrics} \label{sec:time-series_evaluation_metric}
+The evaluation of time-series forecasting can be done through a varaiaty of metrics. The most common ones are through the use of the Mean Squared Error (MSE), Mean Absolute Error (MAE), and the Continuous Ranked Probability Score (CRPS) \cite{winkler_scoring_1996}. The biggest difference between these metrics is that the MSE \& MAE focus on the mean error, while the CRPS also takes into account the uncertainty of the prediction. 
+
+The MSE and MAE over a time-series forecasting are defined as:
+% \begin{align}
+%     \text{MSE}(\hat{X}_{tar}, X_{tar}) &= \frac{1}{F} \sum\limits_{t=0}^{F} (x_t - \hat{x}_t)^2 \\
+%     \text{MAE}(\hat{X}_{tar}, X_{tar}) &= \frac{1}{F}\sum_{t=0}^{F} \left| x_t - \hat{x}_t \right|
+% \end{align}
+\begin{equation} \label{eq:mse}
+    \text{MSE}(\hat{X}_{tar}, X_{tar}) = \frac{1}{F} \sum\limits_{t=0}^{F} (x_t - \hat{x}_t)^2
+    \qquad \qquad
+    \text{MAE}(\hat{X}_{tar}, X_{tar}) = \frac{1}{F}\sum_{t=0}^{F} \left| x_t - \hat{x}_t \right|
+\end{equation}
+
+
+The output of these error measurements are vectors for the multivariate time-series, at end the average over all features is taken as the final value. One must consider that the values ought to be normalized, as otherwise errors of different features can have very different scales.
+
+The CRPS is a metric that is used for probabilistic forecasting and measures the compatibility of a cumulative distribution function (CDF) $F$ with an observation $X_{tar}$. In other words, the CRPS metric becomes smaller if the distribution is highly concentrated on the prediction as illustrated in \autoref{fig:crps_vizualization}. However, in many scenarios the CDF $F$ is not available analytically, but only by estimating it through a set of $N$ forecast samples $\hat{X}_{tar}^N$ \cite{jordan_evaluating_2019}. These samples are gathered by sampling the probabilistic model $N$ times.
+The CRPS metric is calculated for of a single feature at a single timestamp. It is possible to estimate the empirical CDF $\hat{F}_N(z)$ given a point $z$ from these predictions. The empirical CDF at a point $z$ is estimated by the proportion of forecast values that are less than or equal to $z$ and is defined as
+\begin{equation}
+\hat{F}_{i,t}^N(z) = \frac{1}{N} \sum_{n=1}^{N} \mathbb{I}\{\hat{x}_{i,t}^n \leq z\}.
+\end{equation}
+Where $\mathbb{I}\{\hat{X}_{i,t}^i \leq z\}$ is the indicator function that equals 1 if the condition $\hat{X}_{tar}^i \leq z$ is true, and 0 otherwise.
+The CRPS for the empirical CDF $\hat{F}_N$ and the observation $X_{tar}$ is then calculated as:
+\begin{equation} \label{eq:crps}
+\text{CRPS}(\hat{F}_{i,t}^N, x_{i,t}) = \int_{\mathbb{R}} \left( \hat{F}_{i,t}^N(z) - \mathbb{I}\{x_{i,t} \leq z\} \right)^2 dz
+\end{equation}
+Where $i$ indicates the feature and $t$ the timestamp of the forecasts. The estimation of this formulation is further explained and optimized by \textcite{jordan_evaluating_2019}.
+
+As previously mentioned, the CRPS focuses on a single feature at a specific timestamp. To transform this for a multivariate time-series forecast with multiple timestamps in the future some normalization and averaging ought to be done. This can be either done as the Normalized Average CRPS, which is formulated as such:
+\begin{equation} \label{eq:nacrps}
+    \text{NACRPS}(\hat{F}^N, X_{tar}) = \frac{\sum_{i,t} \text{CRPS}(\hat{F}_{i,t}^N, x_{i,t})}{\sum_{i,t} |x_{i,t}|}
+\end{equation}
+And then there is the CRPS-sum, which is the CRPS for the distribution F for the sum of all $d$ features:
+\begin{equation} \label{eq:crps-sum}
+    \text{CRPS}_\text{sum}(\hat{F}^N, X_{tar}) = \frac{\sum_{t} \text{CRPS}(\hat{F}_{i,t}^N, \sum_{i} x_i)}{\sum_{i,t} |x_{i,t}|}
+\end{equation}
+
+
+\begin{figure}[!t]
+    \centering
+    \begin{minipage}{0.5\textwidth}
+        \centering
+        \begin{tikzpicture}
+            \begin{axis}[
+                width=0.7\linewidth, % Set the width of the graph
+                height=0.65\linewidth, % Set the height of the graph
+                axis lines=middle, % Middle aligned axis
+                axis line style={draw=none}, % No border around the graph
+                xlabel=, % x-axis label
+                ylabel=, % y-axis label
+                xtick={1,3,5}, % x-axis ticks for z-1, z, z+1
+                xticklabels={$z-1$,$z$,$z+1$}, % x-axis tick labels
+                ytick={0,0.25,0.5,0.75,1}, % y-axis ticks
+                ymin=0, ymax=1, % y-axis limits
+                xmin=0, xmax=7, % x-axis limits
+                clip=false, % Prevents clipping of paths
+                grid=both, % Add grid lines
+                grid style={gray!30}, % Gray grid lines
+            ]
+        
+            % Blue line
+            \addplot[name path=blue, blue, thick, sharp plot, update limits=false] coordinates {(0,0) (3,0) (3,1) (6,1)};
+        
+            % Red line (Gaussian CDF)
+            \addplot[name path=red, red, smooth, domain=0:6] {normcdf(x,3,1)};
+        
+            % Fill area between blue and red line
+            \addplot[red!10] fill between[of=blue and red];
+        
+            % Arrow to the blue line
+            \draw[<-] (axis cs:2.5,0.1) -- (axis cs:1.2,0.3) node[above] {$\text{CRPS}(\hat{F}_{i,t}^N, x_{i,t})$};
+        
+            % Arrow to the red line
+            \draw[<-] (axis cs:4,0.8) -- (axis cs:5,0.7) node[right] {$\hat{F}_{i,t}^N$};
+        
+            % Arrow to the fill between
+            \draw[<-] (axis cs:3.2,0.3) -- (axis cs:4.2,0.2) node[right] {$\mathbb{I}\{x_{i,t} \leq z\}$};
+        
+            \end{axis}
+        \end{tikzpicture}
+    \end{minipage}\hfill
+    \begin{minipage}{0.5\textwidth}
+        \centering
+        \begin{tikzpicture}
+            \begin{axis}[
+                width=0.7\linewidth, % Set the width of the graph
+                height=0.65\linewidth, % Set the height of the graph
+                axis lines=middle, % Middle aligned axis
+                axis line style={draw=none}, % No border around the graph
+                xlabel=, % x-axis label
+                ylabel=, % y-axis label
+                xtick={1,3,5}, % x-axis ticks for z-1, z, z+1
+                xticklabels={$z-1$,$z$,$z+1$}, % x-axis tick labels
+                ytick={0,0.25,0.5,0.75,1}, % y-axis ticks
+                ymin=0, ymax=1, % y-axis limits
+                xmin=0, xmax=7, % x-axis limits
+                clip=false, % Prevents clipping of paths
+                grid=both, % Add grid lines
+                grid style={gray!30}, % Gray grid lines
+            ]
+        
+            % Blue line
+            \addplot[name path=blue, blue, thick, sharp plot, update limits=false] coordinates {(0,0) (3,0) (3,1) (6,1)};
+        
+            % Red line (Gaussian CDF)
+            \addplot[name path=red, red, smooth, domain=0:6] {normcdf(x,3,0.5)};
+        
+            % Fill area between blue and red line
+            \addplot[red!10] fill between[of=blue and red];
+        
+            \end{axis}
+        \end{tikzpicture}
+    \end{minipage}
+    \caption{Comparative Visualization of Continuous Ranked Probability Scores: The left plot exhibits a higher CRPS value, indicated by the greater area between the forecast distribution (red line) and the step function (blue line), compared to the right plot.} \label{fig:crps_vizualization}
+\end{figure}

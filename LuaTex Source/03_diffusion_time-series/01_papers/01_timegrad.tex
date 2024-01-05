@@ -1,0 +1,75 @@
+\begin{table}[t] 
+\centering
+\begin{tabular}{lccccc} 
+    \toprule
+    Dataset & DIM. & DOM. & FREQ. & \# STEPS \\
+    \midrule
+    Exchange & 8 & $\mathbb{R}^+$ & DAY & 6,071 \\
+    Solar & 137 & $\mathbb{R}^+$ & HOUR & 7,009 \\
+    Electricity & 370 & $\mathbb{R}^+$ & HOUR & 5,833 \\
+    Traffic & 963 & (0,1) & HOUR & 4,001 \\
+    Taxi & 1,214 & $\mathbb{N}$ & 30-MIN & 1,488 \\
+    Wikipedia & 2,000 & $\mathbb{N}$ & DAY & 792 \\
+    \bottomrule
+\end{tabular}
+\caption{Gluon-TS Dataset Descriptions.}
+\label{tab:gluon-datasets}
+\end{table}
+
+\subsection{TimeGrad: Autoregressive Denoising Diffusion Models for Multivariate Probabilistic Time Series Forecasting (2021) \cite{rasul_autoregressive_2021}} \label{sec:timegrad}
+TimeGrad represents the pioneer in using diffusion models for time-series forecasting, where its methodology lays in the DDPM \cite{ho_denoising_2020}. 
+The model architectures are based on those of WaveNet \cite{oord_wavenet_2016} and DiffWave \cite{kong_diffwave_2020}.
+
+TimeGrad was skillfully engineered to make probabilistic forecasts of the multivariate time-series, leveraging both past data and covariates. In this context covariates are extra conditions besides the historical data.
+Specifically, it employs an RNN mechanism to encode the time-series sequence, which, when combined with the DDPM, enables TimeGrad to proficiently learn the distribution of ensuing time steps. Given the use of the RNN, the model works by diffusing and denoising each multivariate value vector $x_t$ in an autoregressive manner. For this it encodes the historical data and covariates using the RNN starting from $x_{-H}$ and $\mathbf{h}_{-H} = 0$ as such
+\begin{equation}
+    \mathbf{h}_t = \text{RNN}_\theta(\text{concat}(x_t^0, c_t), \mathbf{h}_{t-1})
+\end{equation}
+
+Where the reverse process as described in \autoref{eq:cond_time_reverse_process} is done over the entire forecast, in TimeGrad it is done per time step.
+
+\begin{equation} \label{eq:timegrad_1}
+         p_\theta(X_{tar}^{0:K} | X_{obs}) = \prod_{t=1}^F p_\theta(x_t^{0:K} | \mathbf{h}_{t-1})
+\end{equation}
+Where $\mathbf{h}_0$ is the encoded historical data plus covaraites, furthermore, you can see, the conditioning $\mathbf{h}_{t-1}$ also evolves as the predictions go into the future. To continue, the paper models $\prod_{t=1}^F p_\theta(x_t^{0:K} | \mathbf{h}_{t-1})$ through the diffusion process, resulting in the extension of \eqref{eq:timegrad_1}, which is in par with equation \eqref{eq:cond_time_reverse_process} as such:
+
+\begin{equation}
+         p_\theta(X_{tar}^{0:K} | X_{obs}) = \prod_{t=1}^F p(x_t^K) \prod_{k=1}^K  p_\theta(x_t^{k-1} | x_t^k, \mathbf{h}_{t-1})
+\end{equation}
+
+Because of this, the training objective is also extended to minimize the KL divergence over the entire forecast, which can be further simplified to with a noise prediction model:
+\begin{equation}
+    \mathcal{L}_{t,\epsilon_\theta} = \mathbb{E}_{k, x_t^0, \epsilon} \left[|| \epsilon - \epsilon_\theta(x^k, k | \mathbf{h}_{t-1})||^2 \right]
+\end{equation}
+\begin{equation}
+    \mathcal{L}_{\epsilon_\theta} = \frac{1}{F} \sum_{t=1}^F \mathcal{L}_{t,\epsilon_\theta}
+\end{equation}
+
+The paper continuous to evaluate the model on six datasets. These datasets are preprocessed and stored by \textcite{salinas_high-dimensional_2019}\lfootnote{low-rank_gp}{GP-Copula \cite{salinas_high-dimensional_2019}: }{https://github.com/mbohlkeschneider/gluon-ts/tree/mv_release/datasets} and can be easily accessed through GluonTS\lfootnote{gluon-ts}{GluonTS: Probabilistic Time Series Models in Python \cite{alexandrov_gluonts_2019}}{https://github.com/awslabs/gluonts} and are described in \autoref{tab:gluon-datasets}. The number of historical steps used for conditioning is equal to the prediction length. The datasets and their original sources are Exchange \cite{lai_modeling_2018}, Solar \cite{lai_modeling_2018}, Electricity \cite{trindade_electricityloaddiagrams20112014_2015},  Traffic \cite{cuturi_pems-sf_2011}, Taxi \cite{nyc_taxi_and_limousine_commission_tlc_2015}, and Wiki \cite{gasthaus_probabilistic_2019}. The results are displayed in \autoref{tab:timegrad-results}.
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{cccccc}
+    \toprule
+    \multirow{2}{*}{Dataset} & \multirow{2}{*}{H} & \multirow{2}{*}{F} & \multicolumn{3}{c}{TimeGrad} \\
+    \cmidrule(lr){4-6}
+    & & & $\text{CRPS}_{\text{sum}}$ & CRPS & MSE \\
+    \midrule
+    Exchange & 24 & 24 & 0.006$\pm$0.001 & 0.009$\pm$0.001 & \num{2.5e-4} \\
+    \midrule
+    Solar & 24 & 24 & 0.287$\pm$0.020 & 0.367$\pm$0.001 & \num{8.8e2} \\
+    \midrule
+    Electricity & 24 & 24 & 0.0206$\pm$0.001 & 0.049$\pm$0.002 & \num{1.97e5} \\
+    \midrule
+    Traffic & 24 & 24 & 0.044$\pm$0.006 & 0.110$\pm$0.002 & \num{4.2e-4} \\
+    \midrule
+    Taxi & 24 & 24 & 0.114$\pm$0.02 & 0.311$\pm$0.03 & \num{2.6e1} \\
+    \midrule
+    Wikipedia & 30 & 30 & 0.0485$\pm$0.002 & 0.261$\pm$0.02 & \num{3.8e7} \\
+    \bottomrule
+\end{tabular}
+\caption{TimeGrad Multivariate Forecasting results \cite{rasul_autoregressive_2021}}
+\label{tab:timegrad-results}
+\end{table}
+
+While TimeGrad was recognized as state-of-the-art in multivariate probabilistic time-series forecasting at the time \cite{rasul_autoregressive_2021}, it was not without limitations. Notably, its utilization of an RNN to encode historical time steps renders it challenging to apply to long-term time-series because it introduces the error accumulation issue \cite{shen_non-autoregressive_2023}. As a recommendation \textcite{rasul_autoregressive_2021} suggest the use of Transformers \cite{vaswani_attention_2017}. Furthermore, The use of an RNN to encode the historical data and make future predictions makes it much slower compared to newer methods \cite{shen_non-autoregressive_2023}. Overall, TimeGrad has served as the foundational paper for time-series forecasting, opening the doors for more diffusion research into this problem space.

@@ -1,0 +1,100 @@
+\subsection{Score-based generative modeling through SDE (2021) \cite{song_score-based_2021}} \label{sec:unconditional_sde}
+
+\begin{figure}[b]
+\centering
+\begin{tikzpicture}[
+    auto,
+    >={Latex[width=2mm,length=2mm]},
+    data/.style={rectangle, draw=black, fill=green!20, align=center, rounded corners, minimum width=1.5cm, minimum height=1cm},
+    model/.style={rectangle, draw=black, fill=red!20, align=center, rounded corners, minimum width=2.5cm, minimum height=1cm},
+    every node/.style={font=\sffamily},
+    node distance=1.5cm % default distance, but you can customize each one
+]
+
+% Nodes
+\node[data] (x0) {\(x(0)\)};
+\node[data] (xK) [right=12cm of x0] {\(x(K)\)};
+
+
+% Forward process arrows
+\draw[->] ([yshift=10pt] x0.east) -- node[above] {Forward SDE: $\md x = f(x, k)\md k + g(k)\md \mathbf{w}$} ([yshift=10pt] xK.west);
+
+% Reverse process arrows
+% \draw[->] ([yshift=-10pt] xK.west) -- node[below] {Reverse SDE: $\md x = \left[ f(x, k) - g(k)^2 \nabla_x \log{p_k(x)} \right] \md k + g(k)d\bar{\mathbf{w}}$} ([yshift=-10pt] x0.east);
+\draw[->] ([yshift=-10pt] xK.west) -- node[below, align=center] {Reverse SDE: $\md x = \left[ f(x, k) - g(k)^2 \nabla_x \log{p_k(x)} \right] \md k + g(k)d\bar{\mathbf{w}}$ \\ Probability Flow ODE: $\md x = \left[ f(x, k) - \frac{1}{2} g(k)^2 \nabla_x \log p_k(x)\right] \md k$} ([yshift=-10pt] x0.east);
+
+\end{tikzpicture}
+\caption{Illustration for prediction models of the reverse process.}
+\label{fig:score-based_diffusion_sde_process}
+\end{figure}
+
+DDPMs operate in a discrete space, with discrete diffusion and denoising steps. With the use of stochastic differential equations (SDE), this process can be described in continuous time as shown in \autoref{fig:score-based_diffusion_sde_process}. This can be thought of as a generalization of the DDPM, as that is a discrete form of SDE \cite{song_score-based_2021}. 
+Keep in mind that even though the score-based generative modeling with SDEs is described in continuous time, the solutions are still solved iteratively \cite{song_score-based_2021}.
+
+The process can be formalized by letting $\mathbf{w}$ and $\bar{\mathbf{w}}$ be a standard Wiener process and its time-reverse version, respectively, and consider a continuous diffusion time $k \in [0, K]$. The forward diffusion process is described with an SDE as:
+\begin{equation}
+    \md x = f(x, k)\md k + g(k)\md \mathbf{w}
+\end{equation}
+where $g(k)\md \mathbf{w}$ is the stochastic diffusion and $f(x,k)\md k$ is the deterministic drift. 
+On the other hand, the reverse denoising process is described with a time-reverse SDE \cite{anderson_reverse-time_1982}:
+\begin{equation} \label{eq:sde_reverse_process}
+    \md x = \left[ f(x, k) - g(k)^2 \nabla_x \log{p_k(x)} \right] \md k + g(k)d\bar{\mathbf{w}}
+\end{equation}
+where the score of the marginal distribution $\nabla_x \log{p_k(x)}$ is to be estimated. It is estimated with a time-dependent score-based model $s_\theta(x, k)$ using the score objective function
+
+\begin{equation} \label{eq:sde_train_obj}
+    \mathcal{L}_{s_\theta} = \mathbb{E}_{k, x(0), x(k)} \left[\left|\left| \nabla_{x(k)} \log{p_{0k}(x(k) | x(0))} - s_\theta(x(k), k)\right|\right|^2 \right]    
+\end{equation}
+
+Using this objective function the score-based model $s_\theta(x, k)$ can be trained on samples with score matching \cite{song_score-based_2021, hyvarinen_estimation_2005, song_sliced_2020, pang_efficient_2020, holzschuh_score_2023}.
+
+The above formula is a general representation of a SDE, and now to be more specificly tailored to the diffusion process there are multiple methods as described in \textcite{song_score-based_2021}, of which 2 are described as following. 
+The DDPM process can also be generalized to a SDE and is termed the variance preserving (VP) SDE:
+\begin{equation} \label{eq:sde_vp}
+    \md x = - \frac{1}{2}\beta(k)x \md k + \sqrt{\beta(k)}\md \mathbf{w}
+\end{equation}
+where $\beta(\cdot)$ is a continuous function and $\beta(\frac{k}{K}) = K(1 - \beta_k)$ from \eqref{eq:diff_forward_process} as $K \rightarrow \infty$. Based on the VP SDE, Song et al. \cite{song_score-based_2021} has designed the sub-VP SDE, specialized for likelihoods:
+\begin{equation} \label{eq:sde_sub-vp}
+     \md x = - \frac{1}{2}\beta(k)x \mathrm{d}k + \sqrt{\beta(k) \left(1 - \me^{-2 \int_0^k \beta(s)ds}  \right) }\md \mathbf{w}
+\end{equation}
+
+Song et al. \cite{song_score-based_2021} demonstrated that from each SDE, one can derive an ordinary differential equation (ODE) with the same marginal distributions. This associated ODE of an SDE is called the \textit{probability flow} ODE. Applying this concept to the reverse-SDE \eqref{eq:sde_reverse_process} gives the subsequent probability flow ODE:
+\begin{equation} \label{eq:sde_probability_flow}
+\md x = \left[ f(x, k) - \frac{1}{2} g(k)^2 \nabla_x \log p_k(x)\right] \md k 
+\end{equation}
+When the $\nabla_x \log p_k(x)$ in the probability flow is replaced by its approximation $s_\theta(x, k)$, it becomes a special case of neural ODE \cite{chen_neural_2018}. Specifically, it resembles continuous normalizing flows because it transforms data distributions to prior noise distributions and it is fully invertible \cite{grathwohl_ffjord_2018}. Furthermore, this allows exact log-likelihood computation and can be trained via maximum likelihood using standard methods \cite{chen_neural_2018}. 
+
+% \begin{figure}[ht]
+% \centering
+% \begin{tikzpicture}[
+%     auto,
+%     >={Latex[width=2mm,length=2mm]},
+%     data/.style={rectangle, draw=black, fill=green!20, align=center, rounded corners, minimum width=1.5cm, minimum height=1cm},
+%     model/.style={rectangle, draw=black, fill=red!20, align=center, rounded corners, minimum width=2.5cm, minimum height=1cm},
+%     every node/.style={font=\sffamily},
+%     node distance=1.5cm % default distance, but you can customize each one
+% ]
+
+% % Nodes
+% \node[data] (x0) {\(x(0)\)};
+% \node[data] (xK) [right=12cm of x0] {\(x(K)\)};
+
+% % Model node with the equations
+% \node[model] (nn) [below=of $(x0)!0.5!(xK)$] {
+%     $s_\theta(x^k, k)  \eqref{eq:sde_train_obj}$
+% };
+
+% % Forward process arrows
+% \draw[->] ([yshift=10pt] x0.east) -- node[above] {Forward SDE: $\md x = f(x, k)\md k + g(k)\md \mathbf{w}$} ([yshift=10pt] xK.west);
+
+% % Reverse process arrows
+% % \draw[->] ([yshift=-10pt] xK.west) -- node[below] {Reverse SDE: $\md x = \left[ f(x, k) - g(k)^2 \nabla_x \log{p_k(x)} \right] \md k + g(k)d\bar{\mathbf{w}}$} ([yshift=-10pt] x0.east);
+% % \draw[->] ([yshift=-10pt] xK.west) -- node[below, align=center] {Reverse SDE: $\md x = \left[ f(x, k) - g(k)^2 \nabla_x \log{p_k(x)} \right] \md k + g(k)d\bar{\mathbf{w}}$ \\ Probability Flow ODE: $\md x = \left[ f(x, k) - \frac{1}{2} g(k)^2 \nabla_x \log p_k(x)\right] \md k$} ([yshift=-10pt] x0.east);
+
+% \draw[->] (xK) -- ([xshift=10pt] nn.north);
+% \draw[->] ([xshift=-10pt] nn.north) -- (x0);
+
+% \end{tikzpicture}
+% \caption{Illustration for prediction models of the reverse process.}
+% \label{fig:score-based_diffusion_sde_process}
+% \end{figure}

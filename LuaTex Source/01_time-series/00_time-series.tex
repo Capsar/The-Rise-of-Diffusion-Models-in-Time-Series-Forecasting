@@ -1,0 +1,44 @@
+\subsection{Time-series} \label{sec:time-series}
+Time-series modeling, as highlighted by \textcite{koo_comprehensive_2023, lin_diffusion_2023}, is a specialized form of conditional generative modeling, where segments of the time-series are used to generate other segments. This area encompasses three key types: generation, imputation, and forecasting. Generation is about creating synthetic time-series data; imputation deals with filling gaps in existing data, and forecasting is the prediction of future values. These types are interconnected, with forecasting being a specific form of imputation and both imputation and forecasting being aspects of generation. This section will delve into the problem definition for time-series forecasting and evaluation metrics to assess model performance.
+
+\begin{figure}[hb]
+\centering
+\begin{tikzpicture}
+    \begin{axis}[
+        axis lines=middle,
+        ticks=none,
+        width=15cm, height=5cm,
+        xmin=0, xmax=100,
+        ymin=-1.6, ymax=1.9,
+        xlabel=$t$,
+        every axis x label/.style={at={(ticklabel* cs:1)},anchor=west},
+        every axis y label/.style={at={(ticklabel* cs:1)},anchor=south},
+    ]
+
+    \addplot[thick, blue!60!black, domain=5:95, samples=1000] {
+        0.5*sin(deg(0.9*x)) 
+        + 0.3*sin(deg(2*x)) 
+        + 0.2*cos(deg(3*x)) 
+        % + 0.2*sin(deg(5*x)) 
+        + 0.1*rand
+    };
+
+    \fill[blue, opacity=0.3] (axis cs:35,-1.2) rectangle (axis cs:65,1.2);
+    \fill[green, opacity=0.3] (axis cs:65,-1.2) rectangle (axis cs:85,1.2); 
+
+    % Moved the annotations within the axis limits
+    \draw[<->, thick] (axis cs:35,1.4) -- (axis cs:65,1.4) node[midway, above] {Observation ($X_{obs}$)};
+    \draw[<->, thick] (axis cs:65,1.4) -- (axis cs:85,1.4) node[midway, above] {Target ($X_{tar}$)};
+
+    % Add extra labels below the squares
+    \node[below] at (axis cs:35,-1.2) {$-H$};
+    \node[below] at (axis cs:65,-1.2) {$0$};
+    \node[below] at (axis cs:85,-1.2) {$F$};
+    \end{axis}
+\end{tikzpicture}
+\caption{Example of univariate time-series forecasting situation.}
+\label{fig:time-series-univariate}
+\end{figure}
+
+\input{01_time-series/01_problem_definition_time_series}
+\input{01_time-series/02_evaluation_metric}

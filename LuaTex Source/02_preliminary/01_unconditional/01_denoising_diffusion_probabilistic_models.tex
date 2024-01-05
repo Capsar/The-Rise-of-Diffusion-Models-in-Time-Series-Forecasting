@@ -1,0 +1,149 @@
+\subsection{Denoising Diffusion Probabilistic Model (DDPM) (2020) \cite{ho_denoising_2020}} \label{sec:unconditional_ddpm} 
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[
+    auto,
+    >={Latex[width=2mm,length=2mm]},
+    data/.style={rectangle, draw=black, fill=green!20, align=center, rounded corners, minimum width=1.5cm, minimum height=1cm},
+    every node/.style={font=\sffamily},
+    node distance=2cm % default distance, but you can customize each one
+]
+
+% Nodes
+\node[data] (x0) {$x^0$};
+\node (dots1) [right=1cm of x0] {$\cdots$}; % shorter arrow
+\node[data] (xk-1) [right=1cm of dots1] {$x^{k-1}$}; % shorter arrow, was xk
+\node[data] (xk) [right=4cm of xk-1] {$x^k$}; % longer arrow, was xk-1
+\node (dots2) [right=1cm of xk] {$\cdots$}; % shorter arrow
+\node[data] (xK) [right=1cm of dots2] {$x^K$};
+
+% Forward process arrows
+\draw[->] ([yshift=10pt] x0.east) -- ([yshift=10pt] dots1.west);
+\draw[->] ([yshift=10pt] dots1.east) -- ([yshift=10pt] xk-1.west); % was xk
+\draw[->] ([yshift=10pt] xk-1.east) -- node[above] {Forward: $q(x^k | x^{k-1})$} ([yshift=10pt] xk.west); % was xk-1
+\draw[->] ([yshift=10pt] xk.east) -- ([yshift=10pt] dots2.west); % was xk-1
+\draw[->] ([yshift=10pt] dots2.east) --([yshift=10pt] xK.west);
+
+% Reverse process arrows
+\draw[->] ([yshift=-10pt] xK.west) -- ([yshift=-10pt] dots2.east);
+\draw[->] ([yshift=-10pt] dots2.west) --  ([yshift=-10pt] xk.east); % was xk-1
+\draw[->] ([yshift=-10pt] xk.west) -- node[below] {Reverse: $p_\theta(x^{k-1} | x^k)$} ([yshift=-10pt] xk-1.east); % was xk
+\draw[->] ([yshift=-10pt] xk-1.west) -- ([yshift=-10pt] dots1.east); % was xk
+\draw[->] ([yshift=-10pt] dots1.west) -- ([yshift=-10pt] x0.east);
+
+\end{tikzpicture}
+\caption{Illustration of the Denoising Diffusion Probabilistic Model process}
+\label{fig:ddpm_forward_reverse_process}
+\end{figure}
+
+Core to these models are two pivotal processes: the forward diffusion and the reverse denoising process.
+
+The forward process transforms an input $x^0$ into a noise vector $x^K$ through a Markov Chain, progressively introducing noise over $K$ steps as can be seen in \autoref{fig:ddpm_forward_reverse_process}. The transformation is described as:
+\begin{equation} \label{eq:diff_forward_process}
+    q(x^{1:K} | x^0) = \prod_{k=1}^{K} q(x^k \mid x^{k-1}) \text{ where } q(x^k|x^{k-1}) = \mathcal{N}(x^k; \sqrt{1 - \beta_k}x^{k-1}, \beta_k \textbf{I}) 
+\end{equation}
+where $\beta_k \in [0, 1]$ dictates the variance of the noise introduced at each stage. Obtaining $x^k$ is achieved through:
+\begin{equation} 
+   q(x^k|x^0) = \mathcal{N}(x^k; \sqrt{\alpha_k}x^0, (1- \alpha_k) \mathbf{I}) 
+\end{equation}
+where $\alpha_k = \prod_{i=1}^{k}(1 - \beta_i)$ and can be also represented in a closed form as:
+\begin{equation} \label{eq:ddpm_get_xk}
+   x^k(x^0, \epsilon) = \sqrt{\alpha_k}x^0 + \sqrt{1 - \alpha_k}\epsilon \quad \text{where } \epsilon \sim \mathcal{N}(0, \mathbf{I})
+\end{equation}
+
+The reverse process transforms the noised data $x^k$ back to its input $x^0$. It is defined by the following Markov chain with $x^K \sim \mathcal{N} (0, \textbf{I})$:
+\begin{equation} \label{eq:diff_reverse_process}
+     p_\theta(x^{0:K}) = p(x^K)\prod_{k=1}^{K} p_\theta(x^{k-1} \mid x^k) \text{ with } p_\theta(x^{k-1} | x^k) = \mathcal{N} (x^{k-1}; \mu_\theta(x^k, k), \sigma^2_k \mathbf{I})    
+\end{equation}
+In this backwards process $\mu_\theta(x^k, k)$ is modeled using a neural network and where
+\begin{equation} 
+    \sigma^2_k = 
+    \begin{cases} 
+        \beta_k & \text{optimal for } x^0 \sim N(0, \mathbf{I}) \\
+        \tilde{\beta}_k = \frac{1 - \alpha_{k-1}}{1 - \alpha_k} \beta_k & \text{optimal for } x^0 \text{ deterministically set to one point.}
+    \end{cases} \label{eq:diff_sigma_squared}
+\end{equation}
+The choices of $\sigma^2_k$ correspond to the upper and lower bounds on reverse process entropy for data with coordinatewise unit variance \cite{sohl-dickstein_deep_2015}.
+
+Training the diffusion model involves minimizing a KL-divergence loss:
+\begin{equation} 
+    \mathcal{L}_k = D_{KL} \left( q(x^{k-1}|x^k) || p_\theta(x^{k-1}|x^k) \right) \label{eq:diff_train_obj_1}
+\end{equation}
+For more stability in training and since $x^0$ is known, the forward process $q(x^{k-1}|x^k)$ is replaced by:
+\begin{align}
+    q(x^{k-1}|x^k, x^0) &= \mathcal{N} (x^{k-1}; \tilde{\mu}_k(x^k, x^0), \tilde{\beta}_k(x^k, k)) \\
+    \text{where } \tilde{\mu}_k(x^k, x^0) &= \frac{\sqrt{\alpha_{k-1}}\beta_k}{1 - \alpha_t}x^0 + \frac{\sqrt{(1 - \beta_k)}(1 - \alpha_{k-1})}{1 - \alpha_k}x^k \\
+    \text{and } \tilde{\beta}_k &= \frac{1 - \alpha_{k-1}}{1 - \alpha_k}\beta_k 
+\end{align}
+This modification allows to reparameterize the training objective from \autoref{eq:diff_train_obj_1} to:
+\begin{equation} 
+    \mathcal{L}_k = \frac{1}{2\sigma^2_k} || \tilde{\mu}_k(x^k, x^0) - \mu_\theta(x^k, k)||^2 
+\end{equation}
+Where $x^k$ is obtained through \autoref{eq:ddpm_get_xk}. From here, $\mu_\theta(x^k, k)$ can be expressed either by a data prediction model $x_\theta(x^k, k)$ or a noise prediction model $\epsilon_\theta(x^k, k)$ \cite{ho_denoising_2020, benny_dynamic_2022, chang_design_2023}. For image generation, \textcite{ho_denoising_2020} found that the latter performs better. Using a noise prediction model with noise loss function:
+\begin{equation} \label{eq:ddpm_noise_prediction}
+        \mu_\epsilon(\epsilon_\theta) = \frac{1}{\sqrt{1 - \beta_k}}\left(x^k - \frac{\beta_k}{\sqrt{1 - \alpha_k}} \epsilon_\theta(x^k, k) \right) \text{ with } \mathcal{L}_{\epsilon_\theta} = \mathbb{E}_{k, x^0, \epsilon} \left[|| \epsilon - \epsilon_\theta(x^k, k)||^2 \right]
+\end{equation}
+Alternatively, using the data prediction model and its data loss function:
+\begin{equation} \label{eq:ddpm_data_prediction}
+    \mu_x(x_\theta) = \frac{\sqrt{1 - \beta_k}(1 - \alpha_{k-1})}{1 - \alpha_k} x^k + \frac{\sqrt{\alpha_{k-1}}\beta_k}{1 - \alpha_k} x_\theta(x^k, k) \text{ with } \mathcal{L}_{x_\theta} = \mathbb{E}_{k, x^0, \epsilon} \left[|| x^0 - x_\theta(x^k, k)||^2 \right]
+\end{equation}
+For an elaborate derivation of all of the equations mentioned above, take a look at the paper by \textcite{luo_understanding_2022}. The actual sampling of $x^{k-1}$ is shown in \autoref{fig:prediction_models} where $\sigma_k$ is defined as in \autoref{eq:diff_sigma_squared} and $\mathbf{z} \sim \mathcal{N}(0, \mathbf{I})$ Furthermore, \textcite{benny_dynamic_2022} suggest that the combination of the noise and data methods can enhance performance.
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[
+    auto,
+    >={Latex[width=2mm,length=2mm]},
+    data/.style={rectangle, draw=black, fill=green!20, align=center, rounded corners, minimum width=1.5cm, minimum height=1cm},
+    model/.style={rectangle, draw=black, fill=red!20, align=center, rounded corners, minimum width=2.5cm, minimum height=1cm},
+    every node/.style={font=\sffamily},
+    node distance=1.5cm % default distance, but you can customize each one
+]
+
+% Nodes
+\node (dots1) [right=1cm of x0] {$\cdots$};
+\node[data] (xk-1) [right=1cm of dots1] {$x^{k-1}$}; 
+\node[data] (xk) [right=9cm of xk-1] {$x^k$}; 
+\node (dots2) [right=1cm of xk] {$\cdots$};
+
+% Model node with the equations
+\node[model] (nn) [below=25pt of $(xk-1)!0.5!(xk)$] {
+    % $
+    % \mu_\theta(x^k, k) = 
+    % \begin{cases}
+    %         \mu_\epsilon(\epsilon_\theta), & \text{(Noise model) \eqref{eq:ddpm_noise_prediction}} \\
+    %         \mu_x(x_\theta), & \text{(Data model) \eqref{eq:ddpm_data_prediction}}
+    % \end{cases}
+    % $
+    % $x^{k-1} = \mu_\theta(x^k, k) + \sigma_k \mathbf{z}$
+    $x^{k-1} = \mu_\theta(x^k, k) 
+    \begin{cases}
+            \mu_\epsilon(\epsilon_\theta) & \eqref{eq:ddpm_noise_prediction} \\
+            \mu_x(x_\theta) & \eqref{eq:ddpm_data_prediction}
+    \end{cases}
+    + \sigma_k \mathbf{z}$
+};
+
+% \node[above=0.75cm of nn] (equation_q) {$q(x^{k-1}|x^k, x^0) = \mathcal{N} (x^{k-1}; \tilde{\mu}_k(x^k, x^0), \tilde{\beta}_k(x^k, k))$};
+\node[above=3pt of nn] (equation_p) {$p_\theta(x^{k-1}|x^k) = \mathcal{N} (x^{k-1}; \mu_\theta(x^k, k), \sigma^2_k \mathbf{I})$};
+% \node[above=5pt of nn] (equation_p) {$x^{k-1} = \mu_\theta(x^k, k) + \sigma_k \mathbf{z}$};
+
+% Forward process arrows
+\draw[->] ([yshift=10pt] dots1.east) -- ([yshift=10pt] xk-1.west);
+\draw[->] ([yshift=10pt] xk-1.east) -- ([yshift=10pt] xk.west); 
+\draw[->] ([yshift=10pt] xk.east) -- ([yshift=10pt] dots2.west);
+
+% Reverse process arrows
+\draw[->] ([yshift=-10pt] dots2.west) --  ([yshift=-10pt] xk.east); 
+\draw[->] ([yshift=-10pt] xk-1.west) -- ([yshift=-10pt] dots1.east); 
+
+% \draw[->] (xk) -- ([xshift=50pt] nn.north); 
+% \draw[->] ([xshift=-50pt] nn.north) -- (xk-1); 
+\draw[->] ([yshift=-10pt] xk.west) -- ([yshift=0pt] nn.east); 
+\draw[->] ([yshift=0pt] nn.west) -- ([yshift=-10pt] xk-1.east);
+
+\end{tikzpicture}
+\caption{Illustration for prediction models of the reverse process.}
+\label{fig:prediction_models}
+\end{figure}

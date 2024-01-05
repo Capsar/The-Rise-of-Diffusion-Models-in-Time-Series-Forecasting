@@ -1,0 +1,12 @@
+\section{Diffusion Models for Time Series Modeling} \label{sec:diffusion_time-series}
+Time-series modeling using diffusion models has resurrected from sound generation via the methods WaveNet \cite{oord_wavenet_2016} and DiffWave \cite{kong_diffwave_2020}, with the pioneering implementation named TimeGrad by \textcite{rasul_autoregressive_2021}. From the TimeGrad paper, many more followed as illustrated in \autoref{fig:diffusion_history_time-series}, and will be layed out in this chapter. First a brief introduction to the specifics of conditioning diffusion models for time-series forecasting is given. 
+The conditioning of diffusion models for time-series can be done by conditioning the generation of the forecast through the reverse process in \autoref{eq:cond_reverse_process} on the historical data like so:
+
+\begin{equation}
+ \label{eq:cond_time_reverse_process}
+     p_\theta(X_{tar}^{0:K} | X_{obs}) = p(X_{tar}^K)\prod_{k=1}^{K} p_\theta(X_{tar}^{k-1} \mid X_{tar}^k, X_{obs}) \text{ where } p(X_{tar}^K) \sim \mathcal{N}(0, \mathbf{I})
+\end{equation}
+
+The probability of $p_\theta(X_{tar}^{k-1} \mid X_{tar}^k, X_{obs})$ can be implemented through a conditional model as described in \ref{sec:conditional_diff_model} or guidance in \ref{sec:conditional_diff_guidance} with corresponding loss functions. The conditioning is not the historical data directly, but an encoding with the use of RNNs or Transformers \cite{vaswani_attention_2017} as will be evident in the following sections.
+In \autoref{tab:diffusion_implementations} an overview is presented of each of the implementations and their characteristics. In each section discussing a paper, the inspirational papers are mentioned that served as the foundation for the work. This is followed by an in depth but brief overview of the theory and intuition behind the models. Then the datasets and results are presented, finalizing with honest remarks and possible shortcomings are discussed.
+

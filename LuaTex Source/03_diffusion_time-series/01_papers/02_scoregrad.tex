@@ -1,0 +1,48 @@
+\subsection{ScoreGrad: Multivariate Probabilistic Time Series Forecasting with Continuous Energy-based Generative Models (2021) \cite{yan_scoregrad_2021}} \label{sec:scoregrad}
+Where TimeGrad \cite{rasul_autoregressive_2021} uses DDPM \cite{ho_denoising_2020} for the diffusion process, ScoreGrad uses SDE \cite{song_score-based_2021} for the diffusion process as described in section \ref{sec:unconditional_sde}.
+This shift to using SDE brings changes in terms of implementating the diffusion denoising processes, but the rest of the paper resembles that of TimeGrad. Just as TimeGrad the model is designed for forecasting tasks of multivariate time-series by diffusion and denoising single time-series vectors $x_t$, furthermore ScoreGrad also uses an RNN encode the historical data. \textcite{yan_scoregrad_2021} define this encoding with $\mathbf{F}_t$ and the update function as:
+\begin{equation}
+    \mathbf{F}_t = R(\mathbf{F}_{t-1}, x_{t-1}(0), c_{t-1})
+\end{equation}
+This is much like the hidden state in TimeGrad, but the difference is that \textcite{yan_scoregrad_2021} leave the implementation up the user, suggesting the use of Temporal Convolutional Networks \cite{oord_wavenet_2016} or Transformers \cite{vaswani_attention_2017}.
+Just as the conditioning in \eqref{eq:cond_sde_reverse_time}, ScoreGrad conditions the reverse process with the encoding of $\mathbf{F}_t$ as follows:
+\begin{equation}
+    \md x_t = \left[ f(x_t, k) = g(k)^2 \nabla_{x_t} \log{p_k(x_t|\mathbf{F}_t)} \right] \md k + g(k) \md \bar{w}
+\end{equation}
+
+With this extra conditioning and the autoregressive method, the loss function as shown in \ref{eq:cond_sde_train_obj} changes to:
+\begin{equation}
+    \mathcal{L}_{t,s_\theta} = \mathbb{E}_{k, x_t(0), x_t(k)} \left[\left|\left| \nabla_{x_t(k)} \log{p_{0k}(x_t(k) | x_t(0))} - s_\theta(x_t(k),  k | \mathbf{F_t})\right|\right|^2 \right]    
+\end{equation}
+Again, keep in mind that only a single value vector is diffused and denoised, and this is done for every future time step. As a result, the final loss function for the whole forecast is:
+\begin{equation}
+    \mathcal{L}_{s_\theta} = \sum_{t=1}^F \mathcal{L}_{t,s_\theta}
+\end{equation}
+The authors evaluate ScoreGrad on the same datasets accessed through GluonTS\footref{fn:gluon-ts} as TimeGrad and compare with the $\text{CRPS}_{\text{sum}}$ evaluation metric. The results show that using the sub-VP SDE from equation \eqref{eq:sde_sub-vp} give the best results on all datasets apart from Electricity. 
+
+\begin{table}[ht]
+    \centering
+    \begin{tabular}{ccccccccc}
+        \toprule
+        \multirow{2}{*}{Dataset} & \multirow{2}{*}{H} & \multirow{2}{*}{F} & \multicolumn{3}{c}{$\text{CRPS}_{\text{sum}}$} \\
+        \cmidrule(lr){4-6} 
+         & & & TimeGrad & VP SDE & sub-VP SDE \\
+        \midrule
+        Exchange & 30 & 24 & 0.006$\pm$0.001 & 0.006$\pm$0.001 & 0.006$\pm$0.001  \\
+        \midrule
+        Solar & 24 & 24 & 0.287$\pm$0.020 & 0.268$\pm$0.021 & \textbf{0.256$\pm$0.015} \\
+        \midrule
+        Electricity & 24 & 24 & 0.0206$\pm$0.001 & \textbf{0.0192$\pm$0.001} & 0.0194$\pm$0.001 \\
+        \midrule
+        Traffic & 24 & 24 & 0.044$\pm$0.006 & 0.043$\pm$0.004 & \textbf{0.041$\pm$0.004} \\
+        \midrule
+        Taxi & 24 & 30 & 0.114$\pm$0.02 & 0.102$\pm$0.006 & \textbf{0.101$\pm$0.004} \\
+        \midrule
+        Wikipedia & 30 & 24 & 0.0485$\pm$0.002 & \textbf{0.041$\pm$0.003} & 0.043$\pm$0.002 \\
+        \bottomrule
+    \end{tabular}
+    \caption{ScoreGrad Multivariate Forecasting results \cite{yan_scoregrad_2021}}
+    \label{tab:scoregrad-results}
+\end{table}
+The results are a clear indication that the use of SDE for the diffusion process is superior compared to DDPM in this use-case.
+Furthermore, because ScoreGrad resembles TimeGrad so much, the remarks are similar too, such as for future works and as \textcite{yan_scoregrad_2021} already mentioned, it could benefit from the use of more advanced encoding models like Transformers \cite{vaswani_attention_2017} to extract time-series features. Furthermore, the forecasting is again autoregressive which causes errors to accumulate over the time horizon and is slow \cite{shen_non-autoregressive_2023}. It is noteworthy that \textcite{yan_scoregrad_2021}'s paper omits specific details on the ODE application, as described in \autoref{eq:sde_probability_flow}. However they do mention it briefly on the GitHub page and it allows for faster sampling option the use of ODE, allowing a increase of up to 4.9 times for the the prediction speed\footnote{\url{https://github.com/yantijin/ScoreGradPred}}.
