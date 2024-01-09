@@ -10,6 +10,22 @@ This repository contains the complete LuaTeX source code and the final PDF of th
 
 ---
 
+## Cite
+If the work has helped you in your endevors, or you use any of the latex illustrations / figures:
+
+```
+@misc{meijer2024rise,
+      title={The Rise of Diffusion Models in Time-Series Forecasting}, 
+      author={Caspar Meijer and Lydia Y. Chen},
+      year={2024},
+      eprint={2401.03006},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG}
+}
+```
+
+---
+
 For any further questions or inquiries, please open an issue or contact Caspar directly.
 
 ---
