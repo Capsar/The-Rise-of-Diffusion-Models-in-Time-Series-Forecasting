@@ -6,7 +6,7 @@ This repository contains the complete LuaTeX source code and the final PDF of th
 
 ## Contributors
 - Caspar Meijer, EEMCS Distributed Systems, Delft University of Technology, c.j.meijer-1@student.tudelft.nl
-- Lydia Y. Chen, EEMCS Distributed Systems, Delft University of Technology, ydiaychen@ieee.org
+- Lydia Y. Chen, EEMCS Distributed Systems, Delft University of Technology, lydiaychen@ieee.org
 
 ---
 
