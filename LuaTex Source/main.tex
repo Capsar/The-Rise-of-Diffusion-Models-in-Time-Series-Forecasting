@@ -4,7 +4,7 @@
 \usepackage{booktabs}
 \usepackage{cancel}
 \usepackage{graphicx}
-\usepackage[natbib=true,style=ieee,backref=true,maxcitenames=2,mincitenames=1]{biblatex}
+\usepackage[natbib=true,citestyle=numeric,bibstyle=ieee,backref=true,maxcitenames=2,mincitenames=1]{biblatex}
 \addbibresource{references.bib}
 \usepackage[margin=2.5cm]{geometry}
 \usepackage{amsmath,amssymb}
@@ -19,7 +19,12 @@
 \usepackage{siunitx}
 \sisetup{output-exponent-marker=\ensuremath{\mathrm{e}}}
 \usepackage{hyperref}
-
+\hypersetup{
+  colorlinks,
+  citecolor= [rgb]{0, 0.820, 0.051},
+  linkcolor= [rgb]{0.847, 0.106, 0.376},
+  urlcolor= [rgb]{0.118, 0.533, 0.898}
+}
 
 % Definition of the Gaussian function
 \pgfmathdeclarefunction{gauss}{3}{%
@@ -50,8 +55,8 @@
         Lydia Y. Chen \\
         EEMCS Distributed Systems \\
         Delft University of Technology \\
-        \texttt{y.chen-10@tudelft.nl}}
-\date{18 December 2023}
+        \texttt{lydiaychen@ieee.org}}
+\date{15 Januari 2023}
 
 \begin{document}
 

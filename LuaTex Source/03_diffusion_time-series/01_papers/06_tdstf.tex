@@ -10,7 +10,7 @@ The reverse process is formalized as in \autoref{eq:cond_time_reverse_process} w
 The ICU data contains the vital signs Heart Rate (HR), Systolic Blood Pressure (SBP), and Diastolic Blood Pressure (DBP). Furthermore, it also contains special events that occur with the patient such as administering drugs. This approach allows for a more accurate forecast by considering the interrelated events, interventions, and conditions that could impact the patient.
 The paper states that 60 triplets are used to encode all of the historical data, however it is not mentioned how many steps in the future the vital signs are predicted. The paper merely states it makes a 10-minute forecast of the three vital signs HR, SBP, and DBP.
 
-The specific data set is MIMIC-III \cite{johnson_mimic-iii_2015}\lfootnote{tdstf}{TDSTF \cite{chang_tdstf_2023}:}{https://github.com/PingChang818/TDSTF} and the performance are evaluated with MSE and NACRPS as described in \autoref{sec:time-series_evaluation_metric}. The results are presented in \autoref{tab:tdstf-results}.
+The specific data set is MIMIC-III \cite{johnson_mimic-iii_2015}\lfootnote{tdstf}{TDSTF \cite{chang_tdstf_2023}:}{https://github.com/PingChang818/TDSTF} and the performance are evaluated with MSE and NACRPS as described in section \ref{sec:time-series_evaluation_metric}. The results are presented in \autoref{tab:tdstf-results}.
 
 \begin{table}[ht]
     \centering
@@ -28,5 +28,4 @@ The specific data set is MIMIC-III \cite{johnson_mimic-iii_2015}\lfootnote{tdstf
 \end{table}
 
 Besides achieving better predictive results, TSDTF is also much faster to train and inference compared to CSDI [\ref{sec:csdi}]. In the experiments, CSDI has 280 thousand parameters and TDSTF 560 thousand, even with this increase, TDSTF only took 30 minutes to train compared to the 12 hours for CSDI. Furthermore, CSDI took 14.913 seconds to inference while TDSTF only took 0.865 seconds, making TDSTF more than 17 times faster.
-
-Unfortunately, TSDTF only shown to be an improvement over CSDI for the sparse dataset MIMIC-III\footref{fn:tdstf}. More insights in its performance could be achieved by testing it against the same datasets mentioned in the CSDI paper \cite{tashiro_csdi_2021}. Overall the paper makes a strong case, solving many of the shortcomings of CSDI when it comes to sparse data.
+TSDTF only shown to be an improvement over CSDI for the sparse dataset MIMIC-III\footref{fn:tdstf}. More insights in its performance could be achieved by testing it against the same datasets mentioned in the CSDI paper \cite{tashiro_csdi_2021}. Overall the paper makes a strong case, solving the shortcomings of CSDI when it comes to sparse data.

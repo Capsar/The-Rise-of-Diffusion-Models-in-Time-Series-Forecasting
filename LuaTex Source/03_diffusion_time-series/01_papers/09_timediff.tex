@@ -38,7 +38,7 @@ Furthermore, the objective function is set to reduce the error in predicting the
         \toprule
         \multirow{2}{*}{Dataset} & \multirow{2}{*}{H} & \multirow{2}{*}{F} & \multicolumn{5}{c}{MSE} \\
         \cmidrule(lr){4-8}
-         & & & TimeDiff & TimeGrad & CSDI & SSSD & D3VAE \\
+         & & & TimeDiff & TimeGrad & CSDI & SSSD$^{\text{S4}}$ & D3VAE \\
         \midrule
         \multirow{1}{*}{NorPool} & \dots  & 720 & \textbf{0.665} & 1.152 & 1.011 & 0.872 & 0.745 \\
         \midrule
@@ -65,6 +65,6 @@ Furthermore, the objective function is set to reduce the error in predicting the
 
 Furthermore, the authors perform an ablation study on the future mixup and AR, resulting in a clear win if both are implemented. They even went as far as implementing these features on CSDI [\ref{sec:csdi}] and SSSD$^{\text{S4}}$ [\ref{sec:sssds4}] which also showed that by combining the features resulted in the best performance on ETTh1\footref{fn:ett} and ETTm1\footref{fn:ett}. CSDI with mixup and AR fell short on performance compared to TimeDiff, while SSSD$^{\text{S4}}$ achieves comparable results.
 Besides the better conditioning, the performance of using the data prediction model is also shown across the Caiso\footref{fn:depts}, Electricity\footref{fn:autoformer_datasets}, Exchange\footref{fn:autoformer_datasets} and Etth1\footref{fn:ett} datasets. 
-However, unfortunately, the authors do not perform the experiments of SSSD$^{\text{S4}}$ with mixup, AR, and a data prediction model. By also including the data prediction model it could have been even better.
+However, the authors do not perform the experiments of SSSD$^{\text{S4}}$ with mixup, AR, and a data prediction model. The integration of the data prediction model could have potentially led to superior results.
 Furthermore, the implementation still struggles with a large amount of input features learning the multivariate dependencies. The paper considers using graph neural networks to capture these dependencies.
-The paper mentions it has not solved the open question of how to design an efficient denoising network and conditioning network in time series diffusion models.
+Overall, TimeDiff has demonstrated significant advancements over prior models in forecasting, marking a substantial progression in long-term prediction accuracy.

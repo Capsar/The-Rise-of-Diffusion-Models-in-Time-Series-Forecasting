@@ -27,8 +27,7 @@ For both DPSD and CSPD, the authors employ the reparameterization to predict noi
     \mathcal{L}_{\epsilon_\theta} = \mathbb{E}_{k, X_{tar}^0, \epsilon} \left[|| \epsilon - \epsilon_\theta(X_{tar}^k,  t, k, | \mathbf{z})||^2 \right]
 \end{equation}
 
-Unfortunately, the paper does not compare with the same CRPS$_{\text{sum}}$ metric as previous papers, but it does state that the order compared to TimeGrad does not change. The compare on NRMSE and the energy score \cite{gneiting_strictly_2007}.
-
+The paper does not compare with the same CRPS$_{\text{sum}}$ metric as previous papers, but it does state that the order compared to TimeGrad does not change. Instead the comparison is done with metrics NRMSE and the energy score \cite{gneiting_strictly_2007}.
 
 \begin{table}[ht]
     \centering
@@ -49,4 +48,4 @@ Unfortunately, the paper does not compare with the same CRPS$_{\text{sum}}$ metr
     \label{tab:dspd-gp-results}
 \end{table}
 
-The process has the same limitation as TimeGrad[\ref{sec:timegrad}] and ScoreGrad [\ref{sec:scoregrad}], namely that it uses an RNN to represent the historical data. The paper states to use the same architecture, with Transformer, as CSDI [\ref{sec:csdi}] for imputation and only changes the noise source to that of a Gaussian process. The paper only compares to TimeGrad for forecasting capabilities, which is rather disappointing because it later on also compares the imputation capabilities with CSDI. CSDI already performs better at forecasting than TimeGrad, making me wonder whether this was done deliberately. Furthermore, the code is not available for reproducibility. The paper could make a much stronger case for the superiority of time correlated noise if they had evaluated it against more time-series forecasting models and used Transformers for encoding the historical data.
+The process has the same limitation as TimeGrad[\ref{sec:timegrad}] and ScoreGrad [\ref{sec:scoregrad}], namely that it uses an RNN to represent the historical data when evaluated for forecasting. For imputation, the models use the same architecture with Transformer, as CSDI [\ref{sec:csdi}] and only changes the noise source to that of a Gaussian process. The paper only compares to TimeGrad for forecasting capabilities and compares the imputation capabilities with CSDI. A forecasting comparison with CSDI would have been interesting as it already performs better than TimeGrad at forecasting. The code is not available for reproducibility at the moment of writing this survey. The paper could make a stronger case for the superiority of time correlated noise if they had evaluated it against more time-series forecasting models and used Transformers for encoding the historical data as these possible improvements were already presented in the imputation part of the paper.

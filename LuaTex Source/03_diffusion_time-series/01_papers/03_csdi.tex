@@ -16,7 +16,7 @@ CSDI uses the same parameterization of DDPM and conditions the model itself as i
     \mathcal{L}_{\epsilon_\theta} = \mathbb{E}_{k, X_{ta}^0, \epsilon} \left[|| \epsilon - \epsilon_\theta(X_{ta}^k,  k | X_{co})||^2 \right]
 \end{equation}
 
-In CSDI, the same datasets are used as in TimeGrad and ScoreGrad but Exchange \cite{lai_modeling_2018} is left out. In the paper, mistakes about the descriptions of the datasets are made, namely the total number of steps as described in CSDI for the Traffic \& Solar datasets are wrong. They should be 4001 and 7009 respectively to be the same as in TimeGrad \& ScoreGrad through Gluon-TS\footref{fn:gluon-ts}. These mistakes were verified through contact with the author on GitHub. Furthermore the historical window for the forecasting is increased, compared to Tables \ref{tab:timegrad-results} and \ref{tab:scoregrad-results}.
+In CSDI, the same datasets are used as in TimeGrad and ScoreGrad but Exchange \cite{lai_modeling_2018} is left out. The total number of steps as described in CSDI for the Traffic \& Solar datasets are different. They should be 4001 and 7009 respectively to be the same as in TimeGrad \& ScoreGrad through Gluon-TS\footref{fn:gluon-ts}. These mistakes were verified through contact with the author on GitHub. Furthermore the historical window for the forecasting is increased, compared to Tables \ref{tab:timegrad-results} and \ref{tab:scoregrad-results}.
 
 \begin{table}[ht]
     \centering
@@ -41,7 +41,7 @@ In CSDI, the same datasets are used as in TimeGrad and ScoreGrad but Exchange \c
     \label{tab:csdi-results}
 \end{table}
 
-Comparing the results to TimeGrad should be approached with caution, as the extended historical window length used in the experiments may serve as an advantage. This extended context could positively impact the results, potentially diminishing the apparent superiority of CSDI's forecasting performance.
+This increase in the historical window length may serve as an advantage, the results of TimeGrad in the paper were taken from \textcite{rasul_autoregressive_2021} and thus did not have the same historical window length. This extended context could positively impact the results in CSDI's favour on top of the increase because of the architecture.
 
 Furthermore, the method of masking used in CSDI is similar to inpainting in computer vision tasks. This inpainting has shown to cause artifacts between masked and observed regions call boundary disharmony  \cite{lugmayr_repaint_2022}. The masking method used in CSDI is also empirically shown the have the same effects in time-series \cite{shen_non-autoregressive_2023}.
 
@@ -50,3 +50,5 @@ CSDI employs a automatic masking algorithm in order to generate the training dat
 Furthermore the computation time of the denoising network is quadratic in the number of variables and number of time-series points because it is based on two transformer networks. This causes it to run out of memory easily when modeling long multivariate time-series \cite{shen_non-autoregressive_2023}.
 
 Just like SSSD$^{\text{S4}}$ the conditioning is done in the denoising networks' intermediate layers and introduce inductive bias into the denoising objective, \textcite{shen_non-autoregressive_2023} hypothesises that this may not be enough to guide the network in capturing information from the history and leads to inaccurate predictions.
+
+CSDI, along with TimeGrad, has played a crucial role in the development of imputation and forecasting diffusion models. Its widespread use as a baseline highlights its importance and establishes it as a pillar in the rise of diffusion models for time-series forecasting.
