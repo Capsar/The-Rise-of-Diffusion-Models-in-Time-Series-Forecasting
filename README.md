@@ -1,4 +1,5 @@
 # The Rise of Diffusion Models in Time-Series Forecasting
+[![arXiv](https://img.shields.io/badge/arXiv-2401.03006-b31b1b.svg)](https://arxiv.org/abs/2401.03006)
 [![CC BY-NC-SA 4.0][cc-by-nc-sa-shield]][cc-by-nc-sa]
 
 This repository contains the complete LuaTeX source code and the final PDF of the literature survey, "The Rise of Diffusion Models in Time-Series Forecasting" authored by Caspar Meijer and Lydia Y. Chen. This comprehensive survey delves into the application of diffusion models in time-series forecasting, demonstrating state-of-the-art results in various fields of generative AI.
